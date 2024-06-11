@@ -1,0 +1,39 @@
+[debug] [2024-06-11T16:03:38.686Z] ----------------------------------------------------------------------
+[debug] [2024-06-11T16:03:38.688Z] Command:       /opt/homebrew/Cellar/node/21.4.0/bin/node /opt/homebrew/bin/firebase init hosting
+[debug] [2024-06-11T16:03:38.688Z] CLI Version:   12.4.3
+[debug] [2024-06-11T16:03:38.688Z] Platform:      darwin
+[debug] [2024-06-11T16:03:38.688Z] Node Version:  v21.4.0
+[debug] [2024-06-11T16:03:38.688Z] Time:          Tue Jun 11 2024 19:03:38 GMT+0300 (GMT+03:00)
+[debug] [2024-06-11T16:03:38.689Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2024-06-11T16:03:38.722Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2024-06-11T16:03:38.722Z] > authorizing via signed-in user (berkaybaygut@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/berkaybaygut/Workspace/baygut.tech
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2024-06-11T16:03:38.723Z] Using project from CLI flag: baygut-426bc
+[debug] [2024-06-11T16:03:38.724Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/baygut-426bc [none]
+[debug] [2024-06-11T16:03:39.125Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/baygut-426bc 200
+[debug] [2024-06-11T16:03:39.125Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/baygut-426bc {"projectId":"baygut-426bc","projectNumber":"501220824672","displayName":"baygut","name":"projects/baygut-426bc","resources":{"hostingSite":"baygut-426bc"},"state":"ACTIVE","etag":"1_27033984-5156-43df-a72b-a5e8646789ac"}
+[info] i  Using project baygut-426bc (baygut) 
+[info] 
+=== Hosting Setup
