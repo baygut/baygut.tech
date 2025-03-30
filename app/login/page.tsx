@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+// Client component to handle search params
+function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams?.get('redirect') || '/admin';
+
+  // Moving useSearchParams to a separate client component
+  const RedirectHandler = () => {
+    const searchParams = useSearchParams();
+    const redirect = searchParams?.get('redirect') || '/admin';
+    return null; // This component doesn't render anything, just provides context
+  };
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,8 +34,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Get the redirect URL from URL search params
+        const searchParams = new URL(window.location.href).searchParams;
+        const redirectPath = searchParams.get('redirect') || '/admin';
         // Success, redirect to admin or original URL
-        router.push(decodeURIComponent(redirect));
+        router.push(decodeURIComponent(redirectPath));
       } else {
         setError(data.message || 'Invalid password');
       }
@@ -79,7 +87,20 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        {/* Suspense boundary for useSearchParams */}
+        <Suspense fallback={null}>
+          <RedirectHandler />
+        </Suspense>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
