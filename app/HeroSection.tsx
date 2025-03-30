@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import NavButton from '@/components/NavButton';
 import SectionWithModel3D from '@/components/SectionWithModel3D';
@@ -18,7 +18,15 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   subtitle,
   resumeUrl = '/resume.pdf',
 }) => {
+  // Initialize with a default value that's the same on both server and client
   const [autoRotate, setAutoRotate] = React.useState(false);
+
+  // Use useEffect to update the state based on window size after component mounts on client
+  useEffect(() => {
+    // This code only runs on the client after initial render
+    setAutoRotate(window.innerWidth <= 768);
+  }, []);
+
   const handleRotationToggle = () => {
     setAutoRotate((prev) => !prev);
   };
