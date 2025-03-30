@@ -28,7 +28,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ content }) => {
   const children = (
     <section
       id="about"
-      className="flex flex-col items-center justify-center relative py-16 md:py-20 px-4"
+      className="flex flex-col items-center justify-center relative py-16 md:py-20 px-4 bg-black"
     >
       <div className="max-w-6xl mx-auto w-full">
         <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 md:mb-14 text-center text-white">
@@ -64,7 +64,7 @@ const AboutSection: React.FC<AboutSectionProps> = ({ content }) => {
       ) : (
         <ParallaxSection
           variant="scale"
-          scaleAmount={isMobile ? 1.1 : 1.3} // Reduced scale amount on mobile
+          scaleAmount={1.3} // Reduced scale amount on mobile
           speed={0.3}
           accentColor="yellow"
           className="bg-black"
