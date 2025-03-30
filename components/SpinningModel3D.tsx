@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import useMousePosition from "@/hooks/useMousePosition";
-import { SpinningModel3DProps } from "@/types/3dModels";
-import { Environment, Stage } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useState } from "react";
-import { Model3D } from "./3d/Model3D";
+import useMousePosition from '@/hooks/useMousePosition';
+import { SpinningModel3DProps } from '@/types/3dModels';
+import { Environment, Stage } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { Suspense, useEffect, useState } from 'react';
+import { Model3D } from './3d/Model3D';
 
 const SpinningModel3D = ({
   modelPath,
   scale = 1,
-  className = "",
+  className = '',
   autoRotate = false,
 }: SpinningModel3DProps) => {
   const { x } = useMousePosition();
@@ -23,8 +23,8 @@ const SpinningModel3D = ({
       setWindowWidth(window.innerWidth);
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
@@ -34,10 +34,10 @@ const SpinningModel3D = ({
           shadows
           dpr={[1, 2]}
           camera={{ position: [0, 0, 10], fov: 50 }}
-          style={{ background: "transparent" }}
+          style={{ background: 'transparent' }}
         >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[0, 10, 5]} intensity={1} />
+          <ambientLight {...{ intensity: 0.5 }} />
+          <directionalLight {...{ position: [0, 10, 5], intensity: 1 }} />
           <Suspense fallback={null}>
             <Stage environment="city" intensity={0.5} adjustCamera={false}>
               <Model3D
