@@ -40,7 +40,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
     >
       <div className="container mx-auto px-4 py-20 flex flex-col justify-start items-start">
         <div className="flex flex-row justify-between items-center w-full">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">{title}</h1>
+          <h1 className="text-5xl md:text-7xl font-bold">{title}</h1>
           <div>
             <ResumeButton resumeUrl={resumeUrl} />
             <RotationButton autoRotate={autoRotate} onClick={handleRotationToggle} />
@@ -48,7 +48,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
         <p className="text-2xl md:text-3xl text-gray-700 max-w-2xl mb-2">{subtitle}</p>
         <NavButton href="#about">About</NavButton>
-        <NavButton href="#experience">Experience</NavButton>
+        <NavButton href="#experience">Stack</NavButton>
         <NavButton href="#projects">Projects</NavButton>
         <NavButton href="#blog">Blog</NavButton>
         <NavButton href="#contact">Contact</NavButton>

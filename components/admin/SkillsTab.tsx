@@ -20,6 +20,9 @@ export default function SkillsTab() {
   // New states for edit mode
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [currentSkillId, setCurrentSkillId] = useState<string | null>(null);
+  // New state for multiple selection
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Fetch existing skills on component mount
   useEffect(() => {
@@ -62,6 +65,63 @@ export default function SkillsTab() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Handle checkbox selection
+  const handleSkillSelection = (id: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(id) ? prev.filter((skillId) => skillId !== id) : [...prev, id]
+    );
+  };
+
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    if (selectedSkills.length === skillsList.length) {
+      // If all are selected, deselect all
+      setSelectedSkills([]);
+    } else {
+      // Otherwise select all
+      setSelectedSkills(skillsList.map((skill) => skill.id));
+    }
+  };
+
+  // New function to handle multiple delete
+  const handleDeleteSelected = async () => {
+    if (selectedSkills.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedSkills.length} selected skills?`))
+      return;
+
+    setDeleteLoading(true);
+    try {
+      // Process deletions one by one
+      const results = await Promise.all(selectedSkills.map((id) => deleteSkill(Number(id))));
+
+      // Check if all deletions were successful
+      const allSuccess = results.every((result) => result.success);
+
+      if (allSuccess) {
+        // Refresh skills list
+        await fetchSkills();
+        // If deleting skill that's being edited, reset the form
+        if (selectedSkills.includes(currentSkillId || '')) {
+          handleCancelEdit();
+        }
+        setSkillResult({ success: true });
+        // Clear selection
+        setSelectedSkills([]);
+      } else {
+        setSkillResult({
+          success: false,
+          error: 'Failed to delete one or more skills',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete skills:', error);
+      setSkillResult({ success: false, error: 'An unexpected error occurred' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   // New function to handle delete button click
   const handleDeleteSkill = async (id: string) => {
     if (!confirm('Are you sure you want to delete this skill?')) return;
@@ -78,6 +138,10 @@ export default function SkillsTab() {
           handleCancelEdit();
         }
         setSkillResult({ success: true });
+        // Remove from selected if it was selected
+        if (selectedSkills.includes(id)) {
+          setSelectedSkills((prev) => prev.filter((skillId) => skillId !== id));
+        }
       } else {
         setSkillResult({ success: false, error: result.error || 'Failed to delete skill' });
       }
@@ -221,7 +285,39 @@ export default function SkillsTab() {
       )}
 
       <div>
-        <h3 className="text-xl font-medium mb-4">Current Skills</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-medium">Current Skills</h3>
+
+          {skillsList.length > 0 && (
+            <div className="flex items-center gap-2">
+              {selectedSkills.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={deleteLoading}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm disabled:opacity-50"
+                >
+                  {deleteLoading ? 'Deleting...' : `Delete Selected (${selectedSkills.length})`}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {skillsList.length > 0 && (
+          <div className="mb-2 flex items-center">
+            <input
+              type="checkbox"
+              id="selectAll"
+              checked={skillsList.length > 0 && selectedSkills.length === skillsList.length}
+              onChange={handleSelectAll}
+              className="mr-2"
+            />
+            <label htmlFor="selectAll" className="text-sm">
+              Select All
+            </label>
+          </div>
+        )}
+
         <div className="max-h-96 overflow-y-auto p-2 space-y-2">
           {skillsList.length === 0 ? (
             <p className="text-gray-400">No skills found. Add some skills above.</p>
@@ -229,11 +325,23 @@ export default function SkillsTab() {
             skillsList.map((skill) => (
               <div
                 key={skill.id}
-                className="p-4 bg-white/5 border border-gray-300/20 rounded-lg flex justify-between items-start"
+                className={`p-4 border rounded-lg flex justify-between items-start ${
+                  selectedSkills.includes(skill.id)
+                    ? 'bg-blue-900/20 border-blue-500/40'
+                    : 'bg-white/5 border-gray-300/20'
+                }`}
               >
-                <div>
-                  <h4 className="font-medium">{skill.word}</h4>
-                  <p className="text-sm text-gray-300 mt-1">{skill.desc}</p>
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedSkills.includes(skill.id)}
+                    onChange={() => handleSkillSelection(skill.id)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <h4 className="font-medium">{skill.word}</h4>
+                    <p className="text-sm text-gray-300 mt-1">{skill.desc}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button

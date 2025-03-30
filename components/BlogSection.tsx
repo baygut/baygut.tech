@@ -11,8 +11,8 @@ const BlogSection: React.FC<BlogSectionProps> = ({ posts }) => {
     <section className="py-16 bg-[var(--color-red)]" id="blog">
       <div className="px-8">
         <div>
-          <div className="flex flex-row justify-between items-center">
-            <h2 className="text-7xl font-bold mb-8 text-white">Blog.</h2>
+          <div className="flex flex-row justify-between items-center mb-8">
+            <h2 className="text-7xl font-bold  text-white ">Blog.</h2>
             <div className="text-center transition-all hover:scale-125 justify-center items-center">
               <Link
                 href="/blog"

@@ -40,18 +40,12 @@ const BlogContentRenderer: React.FC<BlogContentRendererProps> = ({ content }) =>
           />
         ),
         img: ({ node, alt, src, ...props }) => (
-          <div className="my-6">
-            <iframe
-              src={src || ''}
-              title={alt || 'Embedded content'}
-              width="100%"
-              height="500"
-              className="rounded-lg"
-              style={{ border: 'none' }}
-              allowFullScreen
-            />
-            {alt && <p className="text-sm text-center text-gray-500 mt-2">{alt}</p>}
-          </div>
+          <img
+            src={src || ''}
+            alt={alt || 'Embedded content'}
+            className="w-full h-auto rounded-lg"
+            {...props}
+          />
         ),
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
