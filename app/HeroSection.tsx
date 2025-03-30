@@ -1,18 +1,23 @@
-"use client";
-import React from "react";
+'use client';
+import React from 'react';
 
-import NavButton from "@/components/NavButton";
-import SectionWithModel3D from "@/components/SectionWithModel3D";
-import ArrowIcon from "./components/arrow/ArrowIcon";
-import RotationButton from "./components/RotationButton";
-import ResumeButton from "./ResumeButton";
+import NavButton from '@/components/NavButton';
+import SectionWithModel3D from '@/components/SectionWithModel3D';
+import ArrowIcon from './components/arrow/ArrowIcon';
+import RotationButton from './components/RotationButton';
+import ResumeButton from './ResumeButton';
 
 interface HeroSectionProps {
   title: string;
   subtitle: string;
+  resumeUrl?: string;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ title, subtitle }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({
+  title,
+  subtitle,
+  resumeUrl = '/resume.pdf',
+}) => {
   const [autoRotate, setAutoRotate] = React.useState(false);
   const handleRotationToggle = () => {
     setAutoRotate((prev) => !prev);
@@ -29,20 +34,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ title, subtitle }) => {
         <div className="flex flex-row justify-between items-center w-full">
           <h1 className="text-5xl md:text-7xl font-bold mb-6">{title}</h1>
           <div>
-            <ResumeButton />
-            <RotationButton
-              autoRotate={autoRotate}
-              onClick={handleRotationToggle}
-            />
+            <ResumeButton resumeUrl={resumeUrl} />
+            <RotationButton autoRotate={autoRotate} onClick={handleRotationToggle} />
           </div>
         </div>
-        <p className="text-2xl md:text-3xl text-gray-700 max-w-2xl mb-2">
-          {subtitle}
-        </p>
+        <p className="text-2xl md:text-3xl text-gray-700 max-w-2xl mb-2">{subtitle}</p>
         <NavButton href="#about">About</NavButton>
         <NavButton href="#experience">Experience</NavButton>
         <NavButton href="#projects">Projects</NavButton>
         <NavButton href="#contact">Contact</NavButton>
+
         <ArrowIcon
           height={200}
           className=" transition-all hover:translate-y-10 cursor-pointer"

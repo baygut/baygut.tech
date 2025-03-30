@@ -1,9 +1,11 @@
 export interface Project {
+  id?: number;
   title: string;
   description: string;
   color: string;
-  technologies: string[];
   category: string;
+  technologies: string[];
+  images?: string[];
 }
 
 export interface ProjectsByCategory {

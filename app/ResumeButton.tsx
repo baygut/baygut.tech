@@ -1,18 +1,21 @@
-"use client";
-import React from "react";
-import { Save } from "lucide-react";
-import { useTooltipStore } from "./store/tooltipStore";
+'use client';
+import React from 'react';
+import { Save } from 'lucide-react';
+import { useTooltipStore } from './store/tooltipStore';
+export interface ResumeButtonProps {
+  resumeUrl?: string;
+}
 
-const ResumeButton: React.FC = () => {
+const ResumeButton: React.FC<ResumeButtonProps> = ({ resumeUrl }) => {
   const { showTooltip, hideTooltip } = useTooltipStore();
 
   return (
     <div className="relative">
       <a
-        href="/resume.pdf"
+        href={resumeUrl}
         download
         className="block"
-        onMouseEnter={() => showTooltip("Press to download my resume")}
+        onMouseEnter={() => showTooltip('Press to download my resume')}
         onMouseLeave={() => hideTooltip()}
         aria-label="Download my resume"
       >

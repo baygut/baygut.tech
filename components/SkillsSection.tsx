@@ -1,5 +1,5 @@
-import React from "react";
-import WordDescriptionList from "./WordDescriptionList";
+import React from 'react';
+import WordDescriptionList from './WordDescriptionList';
 
 export interface Skill {
   word: string;
@@ -14,11 +14,7 @@ const SkillsSection: React.FC<SkillsSectionProps> = ({ skills }) => {
   return (
     <section id="experience" className="py-24 bg-[var(--color-blue)]">
       <div className="max-w-6xl mx-auto text-center">
-        <WordDescriptionList
-          words={skills}
-          accentColor="yellow"
-          textColor="white"
-        />
+        <WordDescriptionList words={skills} accentColor="yellow" textColor="white" />
       </div>
     </section>
   );

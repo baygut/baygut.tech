@@ -12,6 +12,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
     "@react-three/drei": "^10.0.5",
     "@react-three/fiber": "^9.1.0",
     "framer-motion": "^12.6.2",

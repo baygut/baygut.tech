@@ -1,18 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import WordItem from "./WordItem";
-import { WordDescription, WordDescriptionListProps } from "./types";
-import { useTooltipStore } from "../../app/store/tooltipStore";
+import { useEffect, useRef, useState } from 'react';
+import { useTooltipStore } from '../../app/store/tooltipStore';
+import WordItem from './WordItem';
+import { WordDescription, WordDescriptionListProps } from './types';
 
 const WordDescriptionList: React.FC<WordDescriptionListProps> = ({
   words,
-  accentColor = "yellow",
-  textColor = "black",
+  accentColor = 'yellow',
+  textColor = 'black',
 }) => {
-  const [selectedWord, setSelectedWord] = useState<WordDescription | null>(
-    null
-  );
+  const [selectedWord, setSelectedWord] = useState<WordDescription | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<WordDescription[][]>([]);
   const { showTooltip, hideTooltip } = useTooltipStore();
@@ -36,8 +34,8 @@ const WordDescriptionList: React.FC<WordDescriptionListProps> = ({
 
   // Handle window resize
   useEffect(() => {
-    window.addEventListener("resize", calculateWordLayout);
-    return () => window.removeEventListener("resize", calculateWordLayout);
+    window.addEventListener('resize', calculateWordLayout);
+    return () => window.removeEventListener('resize', calculateWordLayout);
   }, [words]);
 
   const handleWordClick = (word?: WordDescription) => {
@@ -59,11 +57,7 @@ const WordDescriptionList: React.FC<WordDescriptionListProps> = ({
   };
 
   return (
-    <div
-      className="relative w-full"
-      ref={containerRef}
-      onMouseLeave={() => handleWordClick()}
-    >
+    <div className="relative w-full" ref={containerRef} onMouseLeave={() => handleWordClick()}>
       {/* Words list - always visible */}
       <div>
         {rows.map((row, rowIndex) => (
