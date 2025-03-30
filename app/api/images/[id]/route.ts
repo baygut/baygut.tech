@@ -1,7 +1,7 @@
 import { getImage } from '@/lib/actions';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET({ params }: { params: { id: string } }) {
   const id = params.id;
   const image = await getImage(id);
 
