@@ -20,11 +20,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   // Initialize with a default value that's the same on both server and client
   const [autoRotate, setAutoRotate] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
 
   // Use useEffect to update the state based on window size after component mounts on client
   useEffect(() => {
-    // This code only runs on the client after initial render
-    setAutoRotate(window.innerWidth <= 768);
+    const isMobileDevice = window.innerWidth <= 768;
+    setIsMobile(isMobileDevice);
+    setAutoRotate(isMobileDevice);
   }, []);
 
   const handleRotationToggle = () => {
@@ -43,7 +45,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
           <h1 className="text-5xl md:text-7xl font-bold">{title}</h1>
           <div>
             <ResumeButton resumeUrl={resumeUrl} />
-            <RotationButton autoRotate={autoRotate} onClick={handleRotationToggle} />
+            {!isMobile && <RotationButton autoRotate={autoRotate} onClick={handleRotationToggle} />}
           </div>
         </div>
         <p className="text-2xl md:text-3xl text-gray-700 max-w-2xl mb-2">{subtitle}</p>
