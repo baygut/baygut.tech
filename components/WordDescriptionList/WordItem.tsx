@@ -1,5 +1,5 @@
-import React from "react";
-import { WordDescription } from "./types";
+import React from 'react';
+import { WordDescription } from './types';
 
 interface WordItemProps {
   item: WordDescription;
@@ -22,7 +22,7 @@ const WordItem: React.FC<WordItemProps> = ({
       className={`text-5xl font-bold relative focus:outline-none transition-all 
         ${
           isSelected
-            ? `text-[var(--color-${highlightColor})] opacity-100`
+            ? `text-[var(--color-yellow)] opacity-100`
             : `text-${textColor} opacity-20 hover:opacity-100 hover:text-[${highlightColor}] transition-opacity duration-500`
         }`}
       aria-pressed={isSelected}

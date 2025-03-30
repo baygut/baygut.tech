@@ -63,11 +63,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       <div id="hero-section">
-        <HeroSection
-          title="Berkay Baygut"
-          subtitle="Web Developer & Designer"
-          resumeUrl={resumeUrl}
-        />
+        <HeroSection title="Berkay Baygut" subtitle="Software Developer" resumeUrl={resumeUrl} />
       </div>
 
       <AboutSection content={aboutContent} />

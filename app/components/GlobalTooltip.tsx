@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTooltipStore } from '../store/tooltipStore';
 
 const GlobalTooltip: React.FC = () => {
-  const { isVisible, message, hideTooltip } = useTooltipStore();
+  const { isVisible, message, hideTooltip, showTooltip } = useTooltipStore();
   const [isInFirstSection, setIsInFirstSection] = useState(true);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -12,6 +12,7 @@ const GlobalTooltip: React.FC = () => {
       const scrollY = window.scrollY;
       const viewportHeight = window.innerHeight;
       setIsInFirstSection(scrollY < viewportHeight * 0.8);
+      hideTooltip();
     };
 
     // Initial check
