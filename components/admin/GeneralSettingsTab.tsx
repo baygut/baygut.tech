@@ -16,6 +16,9 @@ export default function GeneralSettingsTab() {
   // Database seeding states
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string } | null>(null);
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // About content states
   const [aboutContent, setAboutContent] = useState<string[]>([]);
@@ -72,8 +75,25 @@ export default function GeneralSettingsTab() {
     fetchData();
   }, []);
 
+  // Function to handle password authentication
+  const handleAuthentication = () => {
+    // This is a simple example. In a real application, you might want to use
+    // environment variables or a more secure server-side verification approach
+    const correctPassword = '123456'; // Replace with your desired password
+
+    if (password === correctPassword) {
+      setIsAuthenticated(true);
+      setAuthError(null);
+    } else {
+      setAuthError('Incorrect password');
+      setIsAuthenticated(false);
+    }
+  };
+
   // Handle database seeding
   async function handleSeed(reset: boolean) {
+    if (!isAuthenticated) return;
+
     setLoading(true);
     try {
       const result = await seedDatabase(reset);
@@ -214,40 +234,6 @@ export default function GeneralSettingsTab() {
 
   return (
     <div className="w-full max-w-2xl space-y-12">
-      {/* Database Seeding Section */}
-      <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold mb-4">Database Management</h2>
-        <div className="flex gap-4 mb-4">
-          <button
-            onClick={() => handleSeed(false)}
-            disabled={loading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Seeding...' : 'Seed Database (Keep Existing)'}
-          </button>
-
-          <button
-            onClick={() => handleSeed(true)}
-            disabled={loading}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Resetting...' : 'Reset & Seed Database'}
-          </button>
-        </div>
-
-        {result && (
-          <div
-            className={`p-4 rounded-lg ${
-              result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {result.success
-              ? 'Database seeded successfully. Redirecting to homepage...'
-              : `Error: ${result.error}`}
-          </div>
-        )}
-      </div>
-
       {/* About Content Section */}
       <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg">
         <h2 className="text-2xl font-bold mb-4">About Content</h2>
@@ -479,6 +465,69 @@ export default function GeneralSettingsTab() {
             </div>
           )}
         </form>
+      </div>
+      {/* Database Seeding Section */}
+      <div className="p-6 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold mb-4">Database Management</h2>
+
+        {!isAuthenticated ? (
+          <div className="mb-4">
+            <p className="text-yellow-400 mb-2">⚠️ This section requires password authentication</p>
+            <div className="flex gap-2 items-start">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAuthentication}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Authenticate
+              </button>
+            </div>
+            {authError && <p className="text-red-500 mt-2">{authError}</p>}
+          </div>
+        ) : (
+          <div className="flex gap-4 mb-4">
+            <button
+              onClick={() => handleSeed(false)}
+              disabled={loading}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Seeding...' : 'Seed Database (Keep Existing)'}
+            </button>
+
+            <button
+              onClick={() => handleSeed(true)}
+              disabled={loading}
+              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? 'Resetting...' : 'Reset & Seed Database'}
+            </button>
+
+            <button
+              onClick={() => setIsAuthenticated(false)}
+              className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              Lock
+            </button>
+          </div>
+        )}
+
+        {result && (
+          <div
+            className={`p-4 rounded-lg ${
+              result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {result.success
+              ? 'Database seeded successfully. Redirecting to homepage...'
+              : `Error: ${result.error}`}
+          </div>
+        )}
       </div>
     </div>
   );

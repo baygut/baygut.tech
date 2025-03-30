@@ -15,7 +15,11 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen h-full flex flex-col items-center justify-start p-4">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+      <div className="flex flex-row justify-between items-center w-full mb-8">
+        <a />
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <LogoutButton />
+      </div>
 
       {/* Tab Navigation */}
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -25,10 +29,6 @@ export default function AdminPage() {
       {activeTab === 'projects' && <ProjectsTab />}
       {activeTab === 'skills' && <SkillsTab />}
       {activeTab === 'blog' && <BlogTab />}
-
-      <div className="mt-8">
-        <LogoutButton />
-      </div>
     </div>
   );
 }

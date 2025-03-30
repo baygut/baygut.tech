@@ -10,6 +10,7 @@ import {
 } from '@/lib/actions';
 import { useState, useEffect } from 'react';
 import ImageUpload from '@/components/ImageUpload';
+import { Pen, Trash } from 'lucide-react';
 
 type Project = {
   id: string;
@@ -495,20 +496,20 @@ export default function ProjectsTab() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-lg">{project.title}</h3>
-                    <p className="text-sm text-gray-300 mt-1">
+                    <p className="text-sm text-black font-extralight mt-1">
                       {project.description.substring(0, 100)}...
                     </p>
                     <div className="flex gap-2 mt-2">
-                      <span className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                      <span className="px-2 py-1 bg-yellow-400 text-xs rounded-full">
                         {project.category}
                       </span>
                       {project.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                        <span key={tag} className="px-2 py-1 bg-yellow-400 text-xs rounded-full">
                           {tag}
                         </span>
                       ))}
                       {project.tags.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                        <span className="px-2 py-1 bg-yellow-400 text-xs rounded-full">
                           +{project.tags.length - 3}
                         </span>
                       )}
@@ -519,13 +520,13 @@ export default function ProjectsTab() {
                       onClick={() => handleEditProject(project)}
                       className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                     >
-                      Edit
+                      <Pen />
                     </button>
                     <button
                       onClick={() => handleDeleteProject(project.id)}
                       className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                     >
-                      Delete
+                      <Trash />
                     </button>
                   </div>
                 </div>
