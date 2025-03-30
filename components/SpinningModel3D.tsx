@@ -43,7 +43,7 @@ const SpinningModel3D = ({
               <Model3D
                 path={modelPath}
                 scale={scale}
-                mouseX={x}
+                mouseX={x ?? 0}
                 windowWidth={windowWidth}
                 autoRotate={autoRotate}
               />
