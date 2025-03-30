@@ -3,19 +3,110 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Main Colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-gray: #888888;
+  
+  /* Accent Colors */
+  --color-blue: #0050E8;
+  --color-yellow: #FFD447;
+  --color-red: #DD6031;
+  
+  /* Functional Colors */
+  --color-background: var(--color-white);
+  --color-text: var(--color-black);
+  --color-text-muted: var(--color-gray);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/fonts/NeueHaasGroteskText75Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+html {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  overflow-x: hidden;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: 'Neue Haas Grotesk', sans-serif;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  width: 100%;
+}
+
+main {
+  width: 100%;
+  overflow-x: hidden; /* Ensure main content doesn't cause horizontal scroll */
+  background-color: var(--color-white);
+  color: var(--color-black);
+}
+
+/* Add support for 3D transformations */
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Neue Haas Grotesk', sans-serif;
+  font-weight: 700;
+  color: var(--color-black);
+}
+
+/* Accent color classes for sections */
+.accent-blue {
+  --accent-color: var(--color-blue);
+}
+
+.accent-yellow {
+  --accent-color: var(--color-yellow);
+}
+
+.accent-red {
+  --accent-color: var(--color-red);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-delayed {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+/* Stagger the animations for nav buttons */
+.flex > a:nth-child(1) {
+  animation-delay: 1.5s;
+}
+
+.flex > a:nth-child(2) {
+  animation-delay: 1.7s;
+}
+
+.flex > a:nth-child(3) {
+  animation-delay: 1.9s;
+}
+
+.flex > a:nth-child(4) {
+  animation-delay: 2.1s;
 }
