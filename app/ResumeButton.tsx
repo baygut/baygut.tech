@@ -14,7 +14,8 @@ const ResumeButton: React.FC<ResumeButtonProps> = ({ resumeUrl }) => {
     <div className="relative">
       <a
         href={resumeUrl}
-        download
+        target="_blank"
+        rel="noopener noreferrer"
         className="block"
         onMouseEnter={() => showTooltip('Press to download my resume')}
         onMouseLeave={() => hideTooltip()}
