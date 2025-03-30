@@ -50,7 +50,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden bg-[var(--color-red)] ps-2 flex flex-row "
+            className="overflow-hidden bg-[var(--color-red)] ps-2 flex flex-col md:flex-row gap-4"
           >
             <div className="mt-3 space-y-3">
               <div className={`h-1 w-16 bg-[var(--color-${project.color})]`}></div>
