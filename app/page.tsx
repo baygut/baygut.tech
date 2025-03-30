@@ -1,14 +1,13 @@
 import AboutSection from "@/components/AboutSection";
-import SkillsSection from "@/components/SkillsSection";
-import ProjectsSection from "@/components/ProjectsSection";
 import ContactSection from "@/components/ContactSection";
-import { Skill } from "@/components/SkillsSection";
+import ProjectsSection from "@/components/ProjectsSection";
+import SkillsSection, { Skill } from "@/components/SkillsSection";
 
-import HeroSection from "./HeroSection";
 import FloatingModel3D from "@/components/FloatingModel3D";
-import { Github, Linkedin, Twitter } from "lucide-react";
-import { formatPhone } from "./utils";
 import { Project } from "@/types/project";
+import { Github, Linkedin } from "lucide-react";
+import HeroSection from "./HeroSection";
+import { formatPhone } from "./utils";
 
 export default function Home() {
   // Skills data

@@ -1,5 +1,5 @@
-import React from "react";
 import ParallaxSection from "@/components/ParallaxSection";
+import React from "react";
 
 interface AboutSectionProps {
   content: string[];

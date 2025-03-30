@@ -1,6 +1,6 @@
 "use client";
+import { RefreshCcw, RefreshCwOff } from "lucide-react";
 import React from "react";
-import { RefreshCcw, RefreshCwOff, RotateCcw, Save } from "lucide-react";
 import { useTooltipStore } from "../store/tooltipStore";
 
 interface RotationButtonProps {

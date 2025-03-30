@@ -1,12 +1,11 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { Stage, Environment } from "@react-three/drei";
-import { Suspense, useEffect, useState } from "react";
 import useMousePosition from "@/hooks/useMousePosition";
 import { SpinningModel3DProps } from "@/types/3dModels";
+import { Environment, Stage } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useState } from "react";
 import { Model3D } from "./3d/Model3D";
-import { Mouse, RefreshCcw, Torus } from "lucide-react";
 
 const SpinningModel3D = ({
   modelPath,
