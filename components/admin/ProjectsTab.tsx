@@ -1,10 +1,36 @@
 'use client';
 
-import { addProject, getCategories, addCategory } from '@/lib/actions';
+import {
+  addProject,
+  getCategories,
+  addCategory,
+  getProjects,
+  updateProject,
+  deleteProject,
+} from '@/lib/actions';
 import { useState, useEffect } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 
+type Project = {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
+  category: string;
+  tags: string[];
+  githubUrl?: string;
+  demoUrl?: string;
+  images: { url: string }[];
+  createdAt: string;
+};
+
 export default function ProjectsTab() {
+  // Projects management states
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState<'add' | 'edit'>('add');
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+
   // States for project form
   const [projectForm, setProjectForm] = useState({
     title: '',
@@ -25,6 +51,95 @@ export default function ProjectsTab() {
   const [categories, setCategories] = useState<string[]>(['web', 'mobile', 'misc']);
   const [customCategory, setCustomCategory] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Fetch projects on component mount
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // Fetch existing projects
+  const fetchProjects = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedProjects = await getProjects();
+      if (fetchedProjects) {
+        setProjects(
+          fetchedProjects.map((project: any) => ({
+            id: project.id || '',
+            title: project.title || '',
+            description: project.description || '',
+            color: project.color || '',
+            category: project.category || '',
+            tags: project.tags || [],
+            githubUrl: project.githubUrl || undefined,
+            demoUrl: project.demoUrl || undefined,
+            images: project.images.map((url: string) => ({ url })) || [],
+            createdAt: project.createdAt || '',
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Populate form with project data for editing
+  const handleEditProject = (project: Project) => {
+    setCurrentProjectId(project.id);
+    setProjectForm({
+      title: project.title,
+      description: project.description,
+      color: project.color,
+      category: project.category,
+      tags: project.tags.join(', '),
+      githubUrl: project.githubUrl || '',
+      demoUrl: project.demoUrl || '',
+    });
+    setMode('edit');
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Reset form and switch to add mode
+  const handleCancelEdit = () => {
+    setCurrentProjectId(null);
+    setProjectForm({
+      title: '',
+      description: '',
+      color: 'blue',
+      category: 'web',
+      tags: '',
+      githubUrl: '',
+      demoUrl: '',
+    });
+    setProjectImages([]);
+    setCustomCategory('');
+    setShowCustomInput(false);
+    setMode('add');
+  };
+
+  // Handle project deletion
+  const handleDeleteProject = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this project?')) return;
+
+    setIsLoading(true);
+    try {
+      await deleteProject(Number(id));
+      // Refresh projects list
+      fetchProjects();
+      // If deleting the project that's currently being edited, reset the form
+      if (id === currentProjectId) {
+        handleCancelEdit();
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Fetch existing categories on component mount
   useEffect(() => {
@@ -92,39 +207,68 @@ export default function ProjectsTab() {
         .map((tag) => tag.trim())
         .filter((tag) => tag);
 
-      // Use the server action with updated fields
-      const result = await addProject({
-        title: projectForm.title,
-        description: projectForm.description,
-        color: projectForm.color,
-        category: showCustomInput ? customCategory : projectForm.category,
-        tags: tagsArray,
-        images: projectImages,
-        githubUrl: projectForm.githubUrl || undefined,
-        demoUrl: projectForm.demoUrl || undefined,
-      });
+      if (mode === 'edit' && currentProjectId) {
+        // Update existing project
+        const result = await updateProject(
+          parseInt(currentProjectId!, 10), // Ensure currentProjectId is a number
+          {
+            title: projectForm.title,
+            description: projectForm.description,
+            color: projectForm.color,
+            category: showCustomInput ? customCategory : projectForm.category,
+            tags: tagsArray,
+            newImages: projectImages.length > 0 ? projectImages : undefined, // Only update images if new ones are provided
+            githubUrl: projectForm.githubUrl || undefined,
+            demoUrl: projectForm.demoUrl || undefined,
+          }
+        );
 
-      setProjectResult(result);
+        setProjectResult(result);
 
-      if (result.success) {
-        // Reset form
-        setProjectForm({
-          title: '',
-          description: '',
-          color: 'blue',
-          category: 'web',
-          tags: '',
-          githubUrl: '',
-          demoUrl: '',
+        if (result.success) {
+          // Reset form and switch back to add mode
+          handleCancelEdit();
+          // Refresh projects list
+          fetchProjects();
+        }
+      } else {
+        // Add new project
+        const result = await addProject({
+          title: projectForm.title,
+          description: projectForm.description,
+          color: projectForm.color,
+          category: showCustomInput ? customCategory : projectForm.category,
+          tags: tagsArray,
+          images: projectImages,
+          githubUrl: projectForm.githubUrl || undefined,
+          demoUrl: projectForm.demoUrl || undefined,
         });
-        setProjectImages([]);
-        setCustomCategory('');
-        setShowCustomInput(false);
 
-        // If a new category was added, refresh the categories list
-        if (showCustomInput && !categories.includes(customCategory)) {
-          const updatedCategories = await getCategories();
-          setCategories(updatedCategories);
+        setProjectResult(result);
+
+        if (result.success) {
+          // Reset form
+          setProjectForm({
+            title: '',
+            description: '',
+            color: 'blue',
+            category: 'web',
+            tags: '',
+            githubUrl: '',
+            demoUrl: '',
+          });
+          setProjectImages([]);
+          setCustomCategory('');
+          setShowCustomInput(false);
+
+          // Refresh projects list
+          fetchProjects();
+
+          // If a new category was added, refresh the categories list
+          if (showCustomInput && !categories.includes(customCategory)) {
+            const updatedCategories = await getCategories();
+            setCategories(updatedCategories);
+          }
         }
       }
     } catch (error) {
@@ -136,7 +280,9 @@ export default function ProjectsTab() {
 
   return (
     <div className="w-full max-w-2xl p-6 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6">Add New Project</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {mode === 'add' ? 'Add New Project' : 'Edit Project'}
+      </h2>
 
       <form onSubmit={handleProjectSubmit} className="space-y-4">
         <div>
@@ -292,13 +438,31 @@ export default function ProjectsTab() {
           </p>
         </div>
 
-        <button
-          type="submit"
-          disabled={projectLoading || projectImages.length === 0}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {projectLoading ? 'Adding Project...' : 'Add Project'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={projectLoading || (mode === 'add' && projectImages.length === 0)}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {projectLoading
+              ? mode === 'add'
+                ? 'Adding Project...'
+                : 'Updating Project...'
+              : mode === 'add'
+              ? 'Add Project'
+              : 'Update Project'}
+          </button>
+
+          {mode === 'edit' && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
 
       {projectResult && (
@@ -307,9 +471,86 @@ export default function ProjectsTab() {
             projectResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
           }`}
         >
-          {projectResult.success ? 'Project added successfully!' : `Error: ${projectResult.error}`}
+          {projectResult.success
+            ? 'Project operation completed successfully!'
+            : `Error: ${projectResult.error}`}
         </div>
       )}
+
+      {/* Projects listing section */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold mb-6">Existing Projects</h2>
+
+        {isLoading ? (
+          <p className="text-center py-4">Loading projects...</p>
+        ) : projects.length === 0 ? (
+          <p className="text-center py-4">No projects found.</p>
+        ) : (
+          <div className="space-y-4">
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                className="p-4 border border-gray-300/30 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg">{project.title}</h3>
+                    <p className="text-sm text-gray-300 mt-1">
+                      {project.description.substring(0, 100)}...
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                        {project.category}
+                      </span>
+                      {project.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                      {project.tags.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-700 text-xs rounded-full">
+                          +{project.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditProject(project)}
+                      className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProject(project.id)}
+                      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {project.images.length > 0 && (
+                  <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
+                    {project.images.slice(0, 3).map((image, index) => (
+                      <img
+                        key={index}
+                        src={image.url}
+                        alt={`${project.title} image ${index + 1}`}
+                        className="h-16 w-auto rounded object-cover"
+                      />
+                    ))}
+                    {project.images.length > 3 && (
+                      <div className="h-16 w-16 bg-gray-700 rounded flex items-center justify-center">
+                        +{project.images.length - 3}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

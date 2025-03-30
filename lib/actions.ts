@@ -336,196 +336,6 @@ export async function seedDatabase(reset = false) {
           description:
             'Building interactive UIs with React and its ecosystem, including React hooks, context API, and state management solutions.',
         },
-        {
-          word: 'TypeScript',
-          description:
-            'Developing type-safe applications with TypeScript to catch errors early and improve code quality.',
-        },
-        {
-          word: 'Next.js',
-          description:
-            'Creating server-side rendered and statically generated web applications with Next.js for optimal performance and SEO.',
-        },
-        {
-          word: 'TailwindCSS',
-          description:
-            'Utilizing TailwindCSS for rapid UI development with utility-first CSS, ensuring responsive and modern designs.',
-        },
-        {
-          word: 'React Native',
-          description:
-            'Building mobile applications with React Native, leveraging cross-platform development tools to create smooth user experiences.',
-        },
-        {
-          word: 'JavaScript',
-          description:
-            'Proficient in JavaScript for both frontend and backend development, creating dynamic and interactive web applications.',
-        },
-        {
-          word: 'Node.js',
-          description:
-            'Building scalable and efficient server-side applications with Node.js and its ecosystem.',
-        },
-        {
-          word: 'Express.js',
-          description:
-            'Using Express.js to build fast and minimalistic web applications with Node.js.',
-        },
-        {
-          word: 'GraphQL',
-          description:
-            'Developing efficient APIs with GraphQL, providing flexible and precise data retrieval.',
-        },
-        {
-          word: 'RESTful APIs',
-          description:
-            'Designing and consuming RESTful APIs for reliable and scalable web communication.',
-        },
-        {
-          word: 'Version Control (Git)',
-          description:
-            'Proficient in using Git for version control, enabling smooth collaboration and tracking of changes in development projects.',
-        },
-        {
-          word: 'CI/CD',
-          description:
-            'Setting up continuous integration and deployment pipelines to automate testing, building, and deploying applications.',
-        },
-        {
-          word: 'Docker',
-          description:
-            'Containerizing applications with Docker to ensure consistency across different environments and simplify deployments.',
-        },
-        {
-          word: 'AWS',
-          description:
-            'Utilizing AWS services (like S3, Lambda, EC2) for scalable cloud infrastructure and application hosting.',
-        },
-        {
-          word: 'Firebase',
-          description:
-            'Leveraging Firebase for real-time databases, user authentication, and app deployment.',
-        },
-        {
-          word: 'Jest',
-          description:
-            'Writing unit and integration tests with Jest to ensure the reliability and correctness of code.',
-        },
-        {
-          word: 'Testing Libraries',
-          description:
-            'Using testing libraries like React Testing Library and Cypress to write tests and ensure a bug-free user experience.',
-        },
-        {
-          word: 'UI/UX Design',
-          description:
-            'Creating intuitive user interfaces and user experiences through wireframing, prototyping, and user testing.',
-        },
-        {
-          word: 'Figma',
-          description:
-            'Designing high-fidelity user interfaces and prototypes with Figma, ensuring collaboration and smooth handoff to developers.',
-        },
-        {
-          word: 'Adobe XD',
-          description:
-            'Creating and prototyping interactive designs using Adobe XD for a seamless design-to-development process.',
-        },
-        {
-          word: 'Sociology & Design',
-          description:
-            'Understanding the intersection of social behavior and design principles to craft digital solutions that resonate with users.',
-        },
-        {
-          word: 'Communication',
-          description:
-            'Clear and engaging communication, both written and verbal, to articulate complex ideas and connect with diverse audiences.',
-        },
-        {
-          word: 'Problem-Solving',
-          description:
-            'Analytical thinking and a solution-oriented approach to tackle technical and creative challenges efficiently.',
-        },
-        {
-          word: 'Project Management',
-          description:
-            'Managing and coordinating projects, ensuring timely delivery and alignment with goals and priorities.',
-        },
-        {
-          word: 'Leadership & Collaboration',
-          description:
-            'Leading teams, managing projects, and collaborating effectively with diverse groups to achieve common goals.',
-        },
-        {
-          word: 'Networking',
-          description:
-            'Building and maintaining professional relationships with industry peers to foster collaboration and growth.',
-        },
-        {
-          word: 'Adaptability',
-          description:
-            'Quickly adapting to new tools, technologies, and environments, ensuring continuous growth and learning.',
-        },
-        {
-          word: 'Creativity',
-          description:
-            'Bringing fresh, innovative ideas to the table to solve problems and enhance user experiences.',
-        },
-        {
-          word: 'Customer Focus',
-          description:
-            'Prioritizing the needs and satisfaction of customers to build products that users love.',
-        },
-        {
-          word: 'Public Speaking',
-          description:
-            'Confidently presenting ideas and projects to diverse audiences, ensuring clear communication and engagement.',
-        },
-        {
-          word: 'Networking & Relationship Building',
-          description:
-            'Proactively building and maintaining professional relationships for career growth and collaboration opportunities.',
-        },
-        {
-          word: 'Teamwork',
-          description:
-            'Collaborating effectively with cross-functional teams to achieve shared goals and deliver successful outcomes.',
-        },
-        {
-          word: 'Time Management',
-          description:
-            'Efficiently managing time and resources to meet deadlines and ensure productivity in fast-paced environments.',
-        },
-        {
-          word: 'Emotional Intelligence',
-          description:
-            'Demonstrating empathy, self-awareness, and interpersonal skills to build strong relationships and foster a positive environment.',
-        },
-        {
-          word: 'Sales & Negotiation',
-          description:
-            'Skilled in understanding customer needs, presenting solutions, and negotiating effectively to achieve win-win outcomes.',
-        },
-        {
-          word: 'Marketing',
-          description:
-            'Understanding the basics of digital marketing to promote products and services and drive engagement.',
-        },
-        {
-          word: 'Customer Support',
-          description:
-            'Providing excellent customer service by addressing issues, solving problems, and ensuring user satisfaction.',
-        },
-        {
-          word: 'Emotional Resilience',
-          description:
-            'Maintaining composure and focus under pressure, demonstrating a positive attitude in challenging situations.',
-        },
-        {
-          word: 'Mentorship',
-          description:
-            'Guiding and supporting others in their professional and personal development, sharing knowledge and expertise.',
-        },
       ];
 
       for (const skill of skills) {
@@ -585,118 +395,6 @@ export async function seedDatabase(reset = false) {
           ],
           githubUrl: 'https://github.com/example/ecommerce-app',
           demoUrl: 'https://example-app.com',
-        },
-        {
-          title: 'Fitness Tracker',
-          description:
-            'Health monitoring app with workout plans, progress tracking, and social features.',
-          color: 'green',
-          category: 'mobile',
-          tags: ['Flutter', 'GraphQL', 'TypeScript'],
-          images: [
-            'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/fitness-tracker',
-          demoUrl: 'https://example-fitness.com',
-        },
-        {
-          title: 'AR Navigation',
-          description: 'Augmented reality navigation system for indoor and outdoor directions.',
-          color: 'purple',
-          category: 'mobile',
-          tags: ['Swift', 'ARKit', 'CoreLocation'],
-          images: [
-            'https://images.unsplash.com/photo-1580910051074-3eb694886505?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1581372041527-9c7f1e3285cb?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1565396435901-8f5d247028b3?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/ar-navigation',
-          demoUrl: 'https://example-ar.com',
-        },
-        {
-          title: 'Portfolio Dashboard',
-          description: 'Interactive web dashboard for displaying and managing creative portfolios.',
-          color: 'yellow',
-          category: 'web',
-          tags: ['React', 'Next.js', 'TailwindCSS'],
-          images: [
-            'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/portfolio-dashboard',
-          demoUrl: 'https://example-portfolio.com',
-        },
-        {
-          title: 'E-learning Platform',
-          description:
-            'Comprehensive web platform for online courses with interactive learning tools.',
-          color: 'red',
-          category: 'web',
-          tags: ['Vue.js', 'Firebase', 'Node.js'],
-          images: [
-            'https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1516321497487-e288fb19713f?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/e-learning-platform',
-          demoUrl: 'https://example-elearning.com',
-        },
-        {
-          title: 'Project Management Tool',
-          description:
-            'Collaborative workspace for teams with task management and analytics features.',
-          color: 'teal',
-          category: 'web',
-          tags: ['React', 'GraphQL', 'MongoDB'],
-          images: [
-            'https://images.unsplash.com/photo-1572025442646-866d16c84a54?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/project-management-tool',
-          demoUrl: 'https://example-pm.com',
-        },
-        {
-          title: 'Blockchain Explorer',
-          description:
-            'Tool for visualizing and analyzing blockchain transactions and smart contracts.',
-          color: 'orange',
-          category: 'misc',
-          tags: ['TypeScript', 'Ethers.js', 'D3.js'],
-          images: [
-            'https://images.unsplash.com/photo-1639762681057-408e52192e55?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1639322537231-2f206e06af84?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/blockchain-explorer',
-          demoUrl: 'https://example-blockchain.com',
-        },
-        {
-          title: 'AI Content Generator',
-          description:
-            'Machine learning tool that creates personalized content for marketing campaigns.',
-          color: 'pink',
-          category: 'misc',
-          tags: ['Python', 'TensorFlow', 'React'],
-          images: [
-            'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1655720033654-a4239dd42d10?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/ai-content-generator',
-          demoUrl: 'https://example-ai.com',
-        },
-        {
-          title: 'IoT Home Controller',
-          description:
-            'System that connects and manages smart home devices through a single interface.',
-          color: 'indigo',
-          category: 'misc',
-          tags: ['Node.js', 'MQTT', 'React Native'],
-          images: [
-            'https://images.unsplash.com/photo-1558703224-d106f5929c72?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1585771724684-38269d6639fd?q=80&w=800&auto=format',
-            'https://images.unsplash.com/photo-1563796442737-3501301632ee?q=80&w=800&auto=format',
-          ],
-          githubUrl: 'https://github.com/example/iot-home-controller',
-          demoUrl: 'https://example-iot.com',
         },
       ];
 
@@ -867,6 +565,35 @@ export async function deleteSkill(id: number): Promise<{ success: boolean; error
   } catch (error) {
     console.error('Error deleting skill:', error);
     return { success: false, error: 'Failed to delete skill' };
+  }
+}
+
+export async function updateSkill(
+  id: number,
+  skill: { word: string; description: string }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Validate input
+    if (!skill.word || !skill.description) {
+      return { success: false, error: 'Skill name and description are required' };
+    }
+
+    // Update the skill
+    await sql`
+      UPDATE skills
+      SET word = ${skill.word}, description = ${skill.description}
+      WHERE id = ${id}
+    `;
+
+    // Revalidate paths that display skills
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating skill:', error);
+    return { success: false, error: 'Failed to update skill' };
   }
 }
 
@@ -1133,5 +860,293 @@ async function getImageBufferFromUrl(url: string) {
   } catch (error) {
     console.error('Error fetching image:', error);
     return null;
+  }
+}
+
+// Blog posts actions
+export async function getBlogPosts() {
+  try {
+    const sql = getNeonClient();
+
+    // Create blogs table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS blog_posts (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        excerpt TEXT NOT NULL,
+        content TEXT NOT NULL,
+        published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        published BOOLEAN NOT NULL DEFAULT true
+      )
+    `;
+
+    // Create blog tags table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS blog_tags (
+        id SERIAL PRIMARY KEY,
+        post_id INT NOT NULL,
+        tag VARCHAR(255) NOT NULL,
+        FOREIGN KEY (post_id) REFERENCES blog_posts(id)
+      )
+    `;
+
+    // Get all published blog posts
+    const posts = await sql`
+      SELECT * FROM blog_posts 
+      WHERE published = true 
+      ORDER BY published_at DESC
+    `;
+
+    // For each post, get its tags
+    const postsWithTags = await Promise.all(
+      posts.map(async (post) => {
+        const tags = await sql`
+          SELECT tag FROM blog_tags WHERE post_id = ${post.id}
+        `;
+
+        return {
+          ...post,
+          tags: tags.map((tagItem) => tagItem.tag),
+        };
+      })
+    );
+
+    return postsWithTags as {
+      id: number;
+      title: string;
+      slug: string;
+      excerpt: string;
+      content: string;
+      published_at: string;
+      updated_at: string;
+      published: boolean;
+      tags?: string[];
+    }[];
+  } catch (error) {
+    console.error('Error fetching blog posts:', error);
+    throw new Error('Failed to fetch blog posts');
+  }
+}
+
+// Get a single blog post by slug
+export async function getBlogPostBySlug(slug: string) {
+  try {
+    const sql = getNeonClient();
+
+    const post = await sql`
+      SELECT * FROM blog_posts 
+      WHERE slug = ${slug} AND published = true
+    `;
+
+    if (post.length === 0) {
+      return null;
+    }
+
+    const tags = await sql`
+      SELECT tag FROM blog_tags WHERE post_id = ${post[0].id}
+    `;
+
+    return {
+      ...post[0],
+      tags: tags.map((tagItem) => tagItem.tag),
+    } as {
+      id: number;
+      title: string;
+      slug: string;
+      excerpt: string;
+      content: string;
+      published_at: string;
+      updated_at: string;
+      published: boolean;
+      tags?: string[];
+    };
+  } catch (error) {
+    console.error('Error fetching blog post:', error);
+    return null;
+  }
+}
+
+// Add a new blog post
+export async function addBlogPost(formData: {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  tags: string[];
+  published?: boolean;
+}) {
+  try {
+    const sql = getNeonClient();
+    const { title, slug, excerpt, content, tags, published = true } = formData;
+
+    // Check if slug already exists
+    const existingPost = await sql`
+      SELECT id FROM blog_posts WHERE slug = ${slug}
+    `;
+
+    if (existingPost.length > 0) {
+      return { success: false, error: 'A post with this URL slug already exists' };
+    }
+
+    // Insert the blog post
+    const insertedPost = await sql`
+      INSERT INTO blog_posts (title, slug, excerpt, content, published)
+      VALUES (${title}, ${slug}, ${excerpt}, ${content}, ${published})
+      RETURNING id
+    `;
+
+    const postId = insertedPost[0].id;
+
+    // Insert each tag associated with the post
+    for (const tag of tags) {
+      await sql`
+        INSERT INTO blog_tags (post_id, tag)
+        VALUES (${postId}, ${tag})
+      `;
+    }
+
+    // Revalidate paths that display blog posts
+    revalidatePath('/');
+    revalidatePath('/blog');
+    revalidatePath(`/blog/${slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding blog post:', error);
+    return { success: false, error: 'Failed to add blog post' };
+  }
+}
+
+// Update a blog post
+export async function updateBlogPost(
+  id: number,
+  formData: {
+    title: string;
+    slug: string;
+    excerpt: string;
+    content: string;
+    tags: string[];
+    published?: boolean;
+  }
+) {
+  try {
+    const sql = getNeonClient();
+    const { title, slug, excerpt, content, tags, published = true } = formData;
+
+    // Check if slug already exists for another post
+    const existingPost = await sql`
+      SELECT id FROM blog_posts WHERE slug = ${slug} AND id != ${id}
+    `;
+
+    if (existingPost.length > 0) {
+      return { success: false, error: 'A post with this URL slug already exists' };
+    }
+
+    // Get current slug for revalidation
+    const currentSlugResult = await sql`
+      SELECT slug FROM blog_posts WHERE id = ${id}
+    `;
+
+    const currentSlug = currentSlugResult[0]?.slug;
+
+    // Update the blog post
+    await sql`
+      UPDATE blog_posts
+      SET title = ${title},
+          slug = ${slug},
+          excerpt = ${excerpt},
+          content = ${content},
+          published = ${published},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `;
+
+    // Update tags - delete existing and insert new ones
+    await sql`DELETE FROM blog_tags WHERE post_id = ${id}`;
+    for (const tag of tags) {
+      await sql`
+        INSERT INTO blog_tags (post_id, tag)
+        VALUES (${id}, ${tag})
+      `;
+    }
+
+    // Revalidate paths that display blog posts
+    revalidatePath('/');
+    revalidatePath('/blog');
+    revalidatePath(`/blog/${currentSlug}`);
+    if (currentSlug !== slug) {
+      revalidatePath(`/blog/${slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating blog post:', error);
+    return { success: false, error: 'Failed to update blog post' };
+  }
+}
+
+// Delete a blog post
+export async function deleteBlogPost(id: number) {
+  try {
+    const sql = getNeonClient();
+
+    // Get slug for revalidation
+    const slugResult = await sql`
+      SELECT slug FROM blog_posts WHERE id = ${id}
+    `;
+
+    const slug = slugResult[0]?.slug;
+
+    // Delete related tags first
+    await sql`DELETE FROM blog_tags WHERE post_id = ${id}`;
+
+    // Then delete the post
+    await sql`DELETE FROM blog_posts WHERE id = ${id}`;
+
+    // Revalidate paths that display blog posts
+    revalidatePath('/');
+    revalidatePath('/blog');
+    if (slug) {
+      revalidatePath(`/blog/${slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting blog post:', error);
+    return { success: false, error: 'Failed to delete blog post' };
+  }
+}
+
+// Blog posts actions for admin (includes unpublished posts)
+export async function getAdminBlogPosts() {
+  try {
+    const sql = getNeonClient();
+
+    // Get all blog posts, including unpublished ones
+    const posts = await sql`
+      SELECT * FROM blog_posts 
+      ORDER BY published_at DESC
+    `;
+
+    // For each post, get its tags
+    const postsWithTags = await Promise.all(
+      posts.map(async (post) => {
+        const tags = await sql`
+          SELECT tag FROM blog_tags WHERE post_id = ${post.id}
+        `;
+
+        return {
+          ...post,
+          tags: tags.map((tagItem) => tagItem.tag),
+        };
+      })
+    );
+
+    return postsWithTags;
+  } catch (error) {
+    console.error('Error fetching admin blog posts:', error);
+    throw new Error('Failed to fetch admin blog posts');
   }
 }

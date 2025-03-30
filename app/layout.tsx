@@ -1,32 +1,31 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import GlobalTooltip from "./components/GlobalTooltip";
+import type { Metadata } from 'next';
+import './globals.css';
+import GlobalTooltip from './components/GlobalTooltip';
 
 export const metadata: Metadata = {
   icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
-  title: "Berkay Baygut | Personal Website",
+  title: 'Berkay Baygut | Personal Website',
   keywords: [
-    "Berkay Baygut",
-    "Portfolio",
-    "Web Developer",
-    "Software Engineer",
-    "Frontend Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "Next.js",
-    "Node.js",
-    "React Native",
-    "Mobile Developer",
+    'Berkay Baygut',
+    'Portfolio',
+    'Web Developer',
+    'Software Engineer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'JavaScript',
+    'TypeScript',
+    'React',
+    'Next.js',
+    'Node.js',
+    'React Native',
+    'Mobile Developer',
   ],
-  description:
-    "Berkay Baygut's personal website showcasing projects and skills.",
+  description: "Berkay Baygut's personal website showcasing projects and skills.",
 };
 
 export default function RootLayout({

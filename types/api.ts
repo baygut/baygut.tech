@@ -30,6 +30,18 @@ export interface SocialLink {
   label: string;
 }
 
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  published_at: string;
+  updated_at: string;
+  published: boolean;
+  tags?: string[];
+}
+
 export interface ContactInfo {
   contactItems: ContactItem[];
   socialLinks: SocialLink[];

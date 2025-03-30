@@ -7,6 +7,7 @@ import TabNavigation from '@/components/admin/TabNavigation';
 import ProjectsTab from '@/components/admin/ProjectsTab';
 import SkillsTab from '@/components/admin/SkillsTab';
 import GeneralSettingsTab from '@/components/admin/GeneralSettingsTab';
+import BlogTab from '@/components/admin/BlogTab';
 
 export default function AdminPage() {
   // Tab state
@@ -23,6 +24,7 @@ export default function AdminPage() {
       {activeTab === 'general' && <GeneralSettingsTab />}
       {activeTab === 'projects' && <ProjectsTab />}
       {activeTab === 'skills' && <SkillsTab />}
+      {activeTab === 'blog' && <BlogTab />}
 
       <div className="mt-8">
         <LogoutButton />

@@ -12,6 +12,12 @@
   --color-blue: #0050E8;
   --color-yellow: #FFD447;
   --color-red: #FF0000;
+  --color-green: #28a745;
+  --color-purple: #6f42c1;
+  --color-pink: #e83e8c;
+  --color-indigo: #6610f2;
+  --color-orange: #fd7e14;
+  --color-teal: #20c997;
   
   /* Functional Colors */
   --color-background: var(--color-white);

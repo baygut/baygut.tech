@@ -2,6 +2,7 @@ import React from 'react';
 import WordDescriptionList from './WordDescriptionList';
 
 export interface Skill {
+  id: number;
   word: string;
   desc: string;
 }

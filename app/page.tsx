@@ -1,19 +1,27 @@
 import AboutSection from '@/components/AboutSection';
+
 import ContactSection from '@/components/ContactSection';
 import ProjectsSection from '@/components/ProjectsSection';
 import SkillsSection, { Skill } from '@/components/SkillsSection';
 
 import FloatingModel3D from '@/components/FloatingModel3D';
-import { getAboutContent, getContactInfo, getProjects, getSkills } from '@/lib/actions';
-import { ContactItem, SocialLink } from '@/types/api';
+import {
+  getAboutContent,
+  getBlogPosts,
+  getContactInfo,
+  getProjects,
+  getSkills,
+} from '@/lib/actions';
+import { BlogPost, ContactItem, SocialLink } from '@/types/api';
 import { Project } from '@/types/project';
 import HeroSection from './HeroSection';
+import BlogSection from '@/components/BlogSection';
 
 export default async function Home() {
   const skillsFromDb = await getSkills()
     .then((data) =>
-      Array.isArray(data) && data.every((item) => 'word' in item && 'desc' in item)
-        ? (data as Skill[])
+      Array.isArray(data) && data.every((item) => 'word' in item && 'desc' in item && 'id' in item)
+        ? (data as Skill[]).sort((a, b) => a.id - b.id)
         : []
     )
     .catch(() => []);
@@ -42,10 +50,23 @@ export default async function Home() {
     resumeUrl: null,
   }));
 
+  // Get blog posts from database
+  const blogPostsFromDb = await getBlogPosts()
+    .then((data) =>
+      Array.isArray(data) &&
+      data.every(
+        (item) => 'title' in item && 'excerpt' in item && 'slug' in item && 'published_at' in item
+      )
+        ? (data as BlogPost[])
+        : []
+    )
+    .catch(() => []);
+
   // Use data from database or fallback to hardcoded data
   const skills = skillsFromDb;
   const aboutContent = aboutContentFromDb;
   const projects = projectsFromDb;
+  const blogPosts = blogPostsFromDb;
 
   // Use contact items from database or fallback to hardcoded values
   const contactItems: ContactItem[] = contactInfoFromDb.contactItems.map((item) => ({
@@ -74,6 +95,10 @@ export default async function Home() {
       <SkillsSection skills={skills} />
 
       <ProjectsSection projects={projects} />
+
+      <div id="blog">
+        <BlogSection posts={blogPosts} />
+      </div>
 
       <ContactSection title="Say Hello." contactItems={contactItems} socialLinks={socialLinks} />
 
