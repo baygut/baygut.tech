@@ -1,7 +1,7 @@
-"use client";
-import React, { useState, useMemo } from "react";
-import { Project, ProjectsByCategory } from "../types/project";
-import ProjectCategory from "./ProjectCategory";
+'use client';
+import React, { useState, useMemo } from 'react';
+import { Project, ProjectsByCategory } from '../types/project';
+import ProjectCategory from './ProjectCategory';
 
 interface ProjectsSectionProps {
   projects: Project[];
@@ -10,13 +10,9 @@ interface ProjectsSectionProps {
 const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects }) => {
   // Group projects by category using useMemo for performance
   const { categories, projectsByCategory } = useMemo(() => {
-    const categoriesSet = [
-      ...new Set(projects.map((project) => project.category)),
-    ];
+    const categoriesSet = [...Array.from(new Set(projects.map((project) => project.category)))];
     const projectsByCat = categoriesSet.reduce((acc, category) => {
-      acc[category] = projects.filter(
-        (project) => project.category === category
-      );
+      acc[category] = projects.filter((project) => project.category === category);
       return acc;
     }, {} as ProjectsByCategory);
 
