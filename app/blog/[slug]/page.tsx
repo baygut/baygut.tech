@@ -49,7 +49,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="mb-8">
             <Link
               href="/blog"
-              className="text-[var(--color-red)] font-bold text-2xl hover:text-[var(--color-blue)] transition-colors"
+              className="text-[var(--color-blue)] font-bold text-2xl hover:text-[var(--color-red)] transition-colors"
             >
               ← Back to Blog
             </Link>
@@ -100,13 +100,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <Link
             href="/blog"
-            className="text-[var(--color-red)] font-bold text-2xl hover:text-[var(--color-blue)] transition-colors"
+            className="text-[var(--color-blue)] font-bold text-2xl hover:text-[var(--color-red)] transition-colors"
           >
             ← Back to Blog
           </Link>
           <Link
             href="/"
-            className="text-[var(--color-red)] font-bold text-2xl hover:text-[var(--color-blue)] transition-colors"
+            className="text-[var(--color-blue)] font-bold text-2xl hover:text-[var(--color-red)] transition-colors"
           >
             Home
           </Link>

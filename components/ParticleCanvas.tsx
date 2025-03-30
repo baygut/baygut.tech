@@ -15,6 +15,15 @@ const MIN_VELOCITY = 0.2;
 const MIN_SPEED = 0.5;
 const MAX_SPEED = 1.0;
 const EXPLOSION_FORCE = 8.0; // Force applied during explosion
+const MAX_FOCUS_DURATION = 2000; // Maximum focus duration before explosion (ms)
+const MAX_SPEED_MULTIPLIER = 5.0; // Max speed multiplier at explosion time
+
+// --- Collision Physics Configuration ---
+const RESTITUTION = 0.2; // Bounciness factor (0-1), energy retained after collision
+const FRICTION = 0.97; // Friction on collision (slowing down)
+const GRAVITY = 0; // Gravity force applied to exploding particles
+const MIN_BOUNCE_VELOCITY = 0.1; // Minimum velocity to bounce (prevents endless tiny bounces)
+const COLLISION_FLASH_DURATION = 500; // Duration of flash effect on collision (ms)
 // --- Configuration ---
 
 // Enhanced particle interface
@@ -31,6 +40,8 @@ interface Particle {
   color: string;
   orbitSpeed: number;
   exploding?: boolean; // Flag for explosion state
+  lastCollision?: number; // Timestamp of last collision for visual effects
+  collisionFlash?: boolean; // Whether particle is in "flash" state after collision
 }
 
 interface ParticleCanvasProps {
@@ -43,6 +54,7 @@ interface ParticleCanvasProps {
   circleRadius?: number;
   isExploding?: boolean; // New prop for explosion state
   isFocused?: boolean; // New prop for focus state
+  focusDuration?: number; // New prop for tracking focus duration
 }
 
 export function ParticleCanvas({
@@ -54,6 +66,7 @@ export function ParticleCanvas({
   circleRadius = 400,
   isExploding = false,
   isFocused = false,
+  focusDuration = 0,
 }: ParticleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
@@ -191,14 +204,82 @@ export function ParticleCanvas({
     // Sort particles by z-coordinate for depth order
     const sortedParticles = [...particles].sort((a, b) => a.z - b.z);
 
+    // Calculate speed multiplier based on focus duration
+    // Start at 1.0 and increase up to MAX_SPEED_MULTIPLIER as focus duration approaches MAX_FOCUS_DURATION
+    const speedMultiplier = isFocused
+      ? 1.0 +
+        (Math.min(focusDuration, MAX_FOCUS_DURATION) / MAX_FOCUS_DURATION) *
+          (MAX_SPEED_MULTIPLIER - 1.0)
+      : 1.0;
+
+    // Exponential acceleration effect as we approach explosion
+    const accelerationCurve = isFocused ? Math.pow(focusDuration / MAX_FOCUS_DURATION, 2) * 2.5 : 0;
+
+    const now = Date.now(); // Current time for collision flash effects
+
     sortedParticles.forEach((p) => {
       // Different behavior for exploding vs orbiting particles
       if (p.exploding) {
         // Exploding particles have high initial velocity and fade out
-        // Just apply gravity and damping
-        p.vy += 0.05; // Gravity
-        p.vx *= 0.98; // Air resistance
-        p.vy *= 0.98;
+        // Apply gravity to falling particles
+        p.vy += GRAVITY; // Gravity
+        p.vx *= FRICTION; // Air resistance
+        p.vy *= FRICTION;
+
+        // --- COLLISION DETECTION WITH SCREEN BOUNDARIES ---
+        let hasCollided = false;
+
+        // Bottom boundary collision (floor)
+        if (p.y + p.radius > canvas.height) {
+          p.y = canvas.height - p.radius; // Prevent going through boundary
+
+          // Only bounce if moving fast enough
+          if (Math.abs(p.vy) > MIN_BOUNCE_VELOCITY) {
+            p.vy = -p.vy * RESTITUTION; // Reverse velocity with energy loss
+            p.vx *= FRICTION; // Apply friction to horizontal movement
+            hasCollided = true;
+          } else {
+            // Too slow to bounce - stop vertical movement but allow sliding
+            p.vy = 0;
+          }
+        }
+
+        // Top boundary collision
+        if (p.y - p.radius < 0) {
+          p.y = p.radius;
+          p.vy = -p.vy * RESTITUTION;
+          p.vx *= FRICTION;
+          hasCollided = true;
+        }
+
+        // Right boundary collision
+        if (p.x + p.radius > canvas.width) {
+          p.x = canvas.width - p.radius;
+          p.vx = -p.vx * RESTITUTION;
+          hasCollided = true;
+        }
+
+        // Left boundary collision
+        if (p.x - p.radius < 0) {
+          p.x = p.radius;
+          p.vx = -p.vx * RESTITUTION;
+          hasCollided = true;
+        }
+
+        // Record collision time for visual effect
+        if (hasCollided) {
+          p.lastCollision = now;
+          p.collisionFlash = true;
+        }
+
+        // Reset collision flash after duration
+        if (
+          p.collisionFlash &&
+          p.lastCollision &&
+          now - p.lastCollision > COLLISION_FLASH_DURATION
+        ) {
+          p.collisionFlash = false;
+        }
       } else {
         // Normal orbital mechanics
         const dx = centerX - p.x;
@@ -208,40 +289,74 @@ export function ParticleCanvas({
         const distance = Math.sqrt(distanceSq);
 
         // Attraction force - stronger when focused
-        const attractionMultiplier = isFocused ? 3.0 : 1.0;
+        const attractionMultiplier = isFocused ? 3.0 + accelerationCurve : 1.0;
         const forceAttraction = ATTRACTION_STRENGTH * distance * attractionMultiplier;
         let forceAX = (dx / distance) * forceAttraction;
         let forceAY = (dy / distance) * forceAttraction;
 
-        // Orbit stabilization
-        const driftFactor = isFocused ? 0.04 : RETURN_TO_BASE_STRENGTH;
+        // Orbit stabilization - weaker as we approach explosion to make particles more chaotic
+        const driftFactor = isFocused
+          ? Math.max(0.01, 0.04 - accelerationCurve * 0.01)
+          : RETURN_TO_BASE_STRENGTH;
+
         const drift = distance - p.baseOrbitRadius;
         forceAX += (dx / distance) * drift * driftFactor;
         forceAY += (dy / distance) * drift * driftFactor;
 
         // Tangential force (perpendicular to radius)
-        // Stronger when focused for faster orbiting
-        const tangentialMultiplier = isFocused ? 2.5 : 1.0;
+        // Stronger when focused for faster orbiting, increases with focus duration
+        const tangentialMultiplier = isFocused ? 2.5 + accelerationCurve : 1.0;
         const forceTX =
-          (-dy / distance) * TANGENTIAL_STRENGTH * p.orbitSpeed * tangentialMultiplier;
-        const forceTY = (dx / distance) * TANGENTIAL_STRENGTH * p.orbitSpeed * tangentialMultiplier;
+          (-dy / distance) *
+          TANGENTIAL_STRENGTH *
+          p.orbitSpeed *
+          tangentialMultiplier *
+          speedMultiplier;
+        const forceTY =
+          (dx / distance) *
+          TANGENTIAL_STRENGTH *
+          p.orbitSpeed *
+          tangentialMultiplier *
+          speedMultiplier;
+
+        // Add small random jittering force that increases with focus duration
+        if (isFocused) {
+          const jitterMagnitude = 0.01 + accelerationCurve * 0.1;
+          forceAX += (Math.random() - 0.5) * jitterMagnitude;
+          forceAY += (Math.random() - 0.5) * jitterMagnitude;
+        }
 
         // Update velocity
         p.vx += forceAX + forceTX;
         p.vy += forceAY + forceTY;
 
-        // Apply damping
-        const dampingValue = isFocused ? 0.97 : DAMPING_FACTOR; // More damping when focused
+        // Apply damping - less damping as we approach explosion
+        const dampingValue = isFocused
+          ? Math.max(0.93, 0.97 - accelerationCurve * 0.01)
+          : DAMPING_FACTOR;
+
         p.vx *= dampingValue;
         p.vy *= dampingValue;
 
-        // Ensure minimum velocity
-        const minVel = isFocused ? MIN_VELOCITY * 2 : MIN_VELOCITY;
+        // Ensure minimum velocity - higher minimum as we approach explosion
+        const minVel = isFocused
+          ? MIN_VELOCITY * (2.0 + accelerationCurve) * speedMultiplier
+          : MIN_VELOCITY;
+
         const currentSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
         if (currentSpeed < minVel) {
           const boostFactor = minVel / Math.max(currentSpeed, 0.001);
           p.vx *= boostFactor;
           p.vy *= boostFactor;
+        }
+
+        // Optional: Cap maximum speed to prevent too extreme movement
+        const maxVelocity = 12.0 * speedMultiplier;
+        const currentVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (currentVelocity > maxVelocity) {
+          const scaleFactor = maxVelocity / currentVelocity;
+          p.vx *= scaleFactor;
+          p.vy *= scaleFactor;
         }
       }
 
@@ -268,23 +383,61 @@ export function ParticleCanvas({
         p.vy = 0;
       }
 
-      // Calculate opacity based on explosion or normal state
+      // Calculate opacity and color based on state
       let opacity = 0.7;
+      let color = p.color;
+
+      // When focused, make particles slightly brighter as we approach explosion
+      if (isFocused && !p.exploding) {
+        opacity = Math.min(0.9, 0.7 + accelerationCurve * 0.1);
+      }
+
       if (p.exploding) {
-        // Fade out exploding particles over time
+        // Fade out exploding particles over time, but more slowly
         const explosionTime = explosionStartTimeRef.current
-          ? (Date.now() - explosionStartTimeRef.current) / 1000
+          ? (Date.now() - explosionStartTimeRef.current) / 2000 // Slower fade (2s instead of 1s)
           : 0;
         opacity = Math.max(0, 1 - explosionTime);
+
+        // Flash effect on collision - briefly increase brightness and size
+        if (p.collisionFlash) {
+          // Calculate flash intensity - fades out over COLLISION_FLASH_DURATION
+          const flashProgress = p.lastCollision
+            ? 1 - Math.min(1, (now - p.lastCollision) / COLLISION_FLASH_DURATION)
+            : 0;
+
+          // Make particle brighter during flash
+          opacity = Math.min(1, opacity + flashProgress * 0.3);
+
+          // Extract RGB components to create a whiter version for the flash
+          const rgbMatch = p.color.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
+          if (rgbMatch) {
+            const r = parseInt(rgbMatch[1]);
+            const g = parseInt(rgbMatch[2]);
+            const b = parseInt(rgbMatch[3]);
+
+            // Mix with white based on flash intensity
+            const whiteAmount = flashProgress * 0.7; // How much white to mix in
+            const newR = Math.min(255, r + (255 - r) * whiteAmount);
+            const newG = Math.min(255, g + (255 - g) * whiteAmount);
+            const newB = Math.min(255, b + (255 - b) * whiteAmount);
+
+            color = `rgba(${Math.round(newR)}, ${Math.round(newG)}, ${Math.round(newB)}`;
+          }
+        }
       }
 
       // Draw the particle with adjusted opacity
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+
+      // Slightly increase particle size during collision flash
+      const radiusMultiplier = 1;
+
+      ctx.arc(p.x, p.y, p.radius * radiusMultiplier, 0, Math.PI * 2);
 
       // Parse the color to modify opacity
-      const parsedColor = p.color.replace(
-        /rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/,
+      const parsedColor = color.replace(
+        /rgba\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/,
         (_, r, g, b) => `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`
       );
 
@@ -297,7 +450,7 @@ export function ParticleCanvas({
     } else {
       animationFrameId.current = null;
     }
-  }, [isActive, circleX, circleY, circleRadius, isFocused]);
+  }, [isActive, circleX, circleY, circleRadius, isFocused, focusDuration]);
 
   // Effect to start/stop animation loop based on isActive
   useEffect(() => {

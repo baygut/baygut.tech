@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { lerp } from 'three/src/math/MathUtils';
 import { ParticleCanvas } from './ParticleCanvas'; // Import particle canvas
 import SocialLinks, { SocialLink } from './SocialLinks';
+import { useTooltipStore } from '@/app/store/tooltipStore';
 
 interface ContactItem {
   label?: string;
@@ -117,8 +118,20 @@ const ContactSection: React.FC<ContactSectionProps> = ({
   ]);
   // Note: Including springX/Y and springInputs in deps ensures we use latest fallback if mouseRaw becomes null briefly
 
+  // Track focus duration for particles
+  const [focusDuration, setFocusDuration] = useState(0);
+  const focusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { showTooltip, hideTooltip } = useTooltipStore();
+
   // --- Hover Handlers ---
-  const handleSectionEnter = () => setIsSectionHovered(true);
+  const handleSectionEnter = () => {
+    setIsSectionHovered(true);
+    showTooltip('Click and hold to explode the circle!');
+    setTimeout(() => {
+      hideTooltip();
+    }, 3000); // Hide tooltip after 2 seconds
+  };
   const handleSectionLeave = () => {
     setIsSectionHovered(false);
     // Clear any pending long press on leave
@@ -126,7 +139,13 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    // Also clear focus interval
+    if (focusIntervalRef.current) {
+      clearInterval(focusIntervalRef.current);
+      focusIntervalRef.current = null;
+    }
     setIsLongPressed(false);
+    setFocusDuration(0);
   };
 
   // Mouse down handler for long press
@@ -141,6 +160,12 @@ const ContactSection: React.FC<ContactSectionProps> = ({
         stiffness: 200,
         damping: 25,
       });
+
+      // Start tracking focus duration for particle acceleration
+      setFocusDuration(0);
+      focusIntervalRef.current = setInterval(() => {
+        setFocusDuration((prev) => prev + 50); // Increment every 50ms
+      }, 50);
     }, FOCUS_DURATION);
   };
 
@@ -150,6 +175,12 @@ const ContactSection: React.FC<ContactSectionProps> = ({
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+    }
+
+    // Clear focus tracking interval
+    if (focusIntervalRef.current) {
+      clearInterval(focusIntervalRef.current);
+      focusIntervalRef.current = null;
     }
 
     // If was long-pressed, trigger explosion
@@ -168,6 +199,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       });
 
       setIsLongPressed(false);
+      setFocusDuration(0);
     }
   };
 
@@ -177,6 +209,10 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
+      }
+      if (focusIntervalRef.current) {
+        clearInterval(focusIntervalRef.current);
+        focusIntervalRef.current = null;
       }
     };
   }, []);
@@ -204,21 +240,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({
         className="absolute inset-0 z-[1] pointer-events-none" // Explicit low z-index
         isExploding={isExploding} // Pass explosion state
         isFocused={isLongPressed} // Pass focus state
-      />
-
-      {/* 2. Anchor Circle (Appears near info box on hover) */}
-      {/* Needs same background color as main circle for goo effect */}
-      <motion.div
-        style={{
-          width: `${ANCHOR_CIRCLE_SIZE}px`,
-          height: `${ANCHOR_CIRCLE_SIZE}px`,
-          left: `${anchorPos.x}px`, // Positioned via calculated state
-          top: `${anchorPos.y}px`,
-          x: '-50%', // Center it
-          y: '-50%',
-        }}
-        transition={{ type: 'spring', damping: 15, stiffness: 200 }} // Springy appear/disappear
-        className="absolute bg-[var(--color-blue)] rounded-full z-[2] pointer-events-none" // Above particles
+        focusDuration={focusDuration} // Pass focus duration for particle acceleration
       />
 
       {/* 3. Big Blue Circle (Main Follower) */}

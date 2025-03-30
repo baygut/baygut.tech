@@ -46,18 +46,20 @@ export const BlogPostCard: React.FC<{ post: BlogPost }> = ({ post }) => {
   });
 
   return (
-    <div className="bg-[var(--color-blue)] overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+    <div className="group bg-[var(--color-blue)] hover:bg-[var(--color-yellow)] transition-colors duration-300 ease-in-out">
       <Link href={`/blog/${post.slug}`}>
         <div className="p-6">
-          <h3 className="text-xl font-semibold mb-2 text-white">{post.title}</h3>
+          <h3 className="text-xl font-semibold mb-2 text-white group-hover:text-black">
+            {post.title}
+          </h3>
           <div className="mb-4">
-            <span className="text-sm text-white">{formattedDate}</span>
+            <span className="text-sm text-white group-hover:text-black">{formattedDate}</span>
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {post.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="text-xs bg-white px-2 py-1 rounded-full text-gray-700"
+                    className="text-xs bg-white px-2 py-1 rounded-full text-gray-700 "
                   >
                     {tag}
                   </span>
@@ -65,9 +67,9 @@ export const BlogPostCard: React.FC<{ post: BlogPost }> = ({ post }) => {
               </div>
             )}
           </div>
-          <p className="text-white">{post.excerpt}</p>
+          <p className="text-white group-hover:text-black">{post.excerpt}</p>
           <div className="mt-4">
-            <span className="text-white hover:underline">Read more →</span>
+            <span className="text-white hover:underline group-hover:text-black">Read more →</span>
           </div>
         </div>
       </Link>

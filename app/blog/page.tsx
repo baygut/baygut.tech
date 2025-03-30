@@ -24,7 +24,7 @@ export default async function BlogIndexPage() {
     <main className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-16">
         <div className="mb-16">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-[var(--color-red)]">Blog</h1>
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-[var(--color-blue)]">Blog</h1>
           <p className="text-xl text-gray-600 max-w-2xl">
             Thoughts, learnings, and insights about software development, technology, and more.
           </p>
@@ -47,7 +47,7 @@ export default async function BlogIndexPage() {
         <div className="flex justify-between items-center">
           <Link
             href="/"
-            className="text-[var(--color-red)] font-bold text-2xl hover:text-[var(--color-blue)] transition-colors"
+            className="text-[var(--color-blue)] font-bold text-2xl hover:text-[var(--color-red)] transition-colors"
           >
             ← Back to Home
           </Link>
