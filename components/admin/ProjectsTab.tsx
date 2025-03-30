@@ -31,6 +31,7 @@ export default function ProjectsTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectImages, setCurrentProjectImages] = useState<{ url: string }[]>([]);
 
   // States for project form
   const [projectForm, setProjectForm] = useState({
@@ -52,6 +53,11 @@ export default function ProjectsTab() {
   const [categories, setCategories] = useState<string[]>(['web', 'mobile', 'misc']);
   const [customCategory, setCustomCategory] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // New states for search and multi-selection
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Fetch projects on component mount
   useEffect(() => {
@@ -89,6 +95,7 @@ export default function ProjectsTab() {
   // Populate form with project data for editing
   const handleEditProject = (project: Project) => {
     setCurrentProjectId(project.id);
+    setCurrentProjectImages(project.images);
     setProjectForm({
       title: project.title,
       description: project.description,
@@ -106,6 +113,7 @@ export default function ProjectsTab() {
   // Reset form and switch to add mode
   const handleCancelEdit = () => {
     setCurrentProjectId(null);
+    setCurrentProjectImages([]);
     setProjectForm({
       title: '',
       description: '',
@@ -133,6 +141,9 @@ export default function ProjectsTab() {
       // If deleting the project that's currently being edited, reset the form
       if (id === currentProjectId) {
         handleCancelEdit();
+      }
+      if (selectedProjects.includes(id)) {
+        setSelectedProjects((prev) => prev.filter((projectId) => projectId !== id));
       }
     } catch (error) {
       console.error('Failed to delete project:', error);
@@ -279,6 +290,72 @@ export default function ProjectsTab() {
     }
   }
 
+  // Filter projects based on search term
+  const filteredProjects = projects.filter(
+    (project) =>
+      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Handle project selection with checkbox
+  const handleProjectSelection = (id: string) => {
+    setSelectedProjects((prev) =>
+      prev.includes(id) ? prev.filter((projectId) => projectId !== id) : [...prev, id]
+    );
+  };
+
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    if (selectedProjects.length === filteredProjects.length) {
+      // If all visible projects are selected, deselect all
+      setSelectedProjects([]);
+    } else {
+      // Otherwise select all visible projects
+      setSelectedProjects(filteredProjects.map((project) => project.id));
+    }
+  };
+
+  // Handle multiple deletion
+  const handleDeleteSelected = async () => {
+    if (selectedProjects.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedProjects.length} selected projects?`))
+      return;
+
+    setDeleteLoading(true);
+    try {
+      // Process deletions one by one
+      const results = await Promise.all(selectedProjects.map((id) => deleteProject(Number(id))));
+
+      // Check if all deletions were successful
+      const allSuccess = results.every((result) => result);
+
+      if (allSuccess) {
+        // Refresh projects list
+        await fetchProjects();
+        // If deleting project that's being edited, reset the form
+        if (selectedProjects.includes(currentProjectId || '')) {
+          handleCancelEdit();
+        }
+        setProjectResult({ success: true });
+        // Clear selection
+        setSelectedProjects([]);
+      } else {
+        setProjectResult({
+          success: false,
+          error: 'Failed to delete one or more projects',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete projects:', error);
+      setProjectResult({ success: false, error: 'An unexpected error occurred' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl p-6 bg-white/10 backdrop-blur-sm rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-6">
@@ -294,6 +371,7 @@ export default function ProjectsTab() {
             type="text"
             id="title"
             name="title"
+            placeholder="Project Title"
             value={projectForm.title}
             onChange={handleInputChange}
             className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -306,6 +384,7 @@ export default function ProjectsTab() {
             Description
           </label>
           <textarea
+            placeholder="Project Description"
             id="description"
             name="description"
             value={projectForm.description}
@@ -427,9 +506,27 @@ export default function ProjectsTab() {
 
         <div>
           <label className="block text-sm font-medium mb-1">Images</label>
+          {mode === 'edit' && currentProjectImages.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm mb-2">Current Images:</p>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {currentProjectImages.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image.url}
+                    alt={`Current image ${index + 1}`}
+                    className="h-20 w-auto rounded object-cover"
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {mode === 'edit' ? 'Upload new images to replace the current ones (optional)' : ''}
+              </p>
+            </div>
+          )}
           <ImageUpload
             onImagesChange={setProjectImages}
-            required
+            required={mode === 'add'}
             maxWidth={800}
             maxHeight={800}
             quality={0.7}
@@ -478,24 +575,90 @@ export default function ProjectsTab() {
         </div>
       )}
 
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Existing Projects</h2>
+
+        {projects.length > 0 && selectedProjects.length > 0 && (
+          <button
+            onClick={handleDeleteSelected}
+            disabled={deleteLoading}
+            className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm disabled:opacity-50"
+          >
+            {deleteLoading ? 'Deleting...' : `Delete Selected (${selectedProjects.length})`}
+          </button>
+        )}
+      </div>
+
+      {/* Search input */}
+      <div className="mb-4">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search projects..."
+            className="w-full px-3 py-2 pl-10 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {filteredProjects.length > 0 && (
+        <div className="mb-2 flex items-center">
+          <input
+            type="checkbox"
+            id="selectAll"
+            checked={
+              filteredProjects.length > 0 && selectedProjects.length === filteredProjects.length
+            }
+            onChange={handleSelectAll}
+            className="mr-2"
+          />
+          <label htmlFor="selectAll" className="text-sm">
+            Select All
+          </label>
+        </div>
+      )}
+
       {/* Projects listing section */}
       <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-6">Existing Projects</h2>
-
         {isLoading ? (
           <p className="text-center py-4">Loading projects...</p>
         ) : projects.length === 0 ? (
           <p className="text-center py-4">No projects found.</p>
         ) : (
           <div className="space-y-4">
-            {projects.map((project) => (
+            {filteredProjects.map((project) => (
               <div
                 key={project.id}
                 className="p-4 border border-gray-300/30 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-lg">{project.title}</h3>
+                    <h3 className="font-bold text-lg">
+                      <input
+                        type="checkbox"
+                        checked={selectedProjects.includes(project.id)}
+                        onChange={() => handleProjectSelection(project.id)}
+                        className="me-1.5"
+                      />
+                      {project.title}
+                    </h3>
                     <p className="text-sm text-black font-extralight mt-1">
                       {project.description.substring(0, 100)}...
                     </p>
