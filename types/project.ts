@@ -4,8 +4,10 @@ export interface Project {
   description: string;
   color: string;
   category: string;
-  technologies: string[];
+  tags: string[];
   images?: string[];
+  github_url?: string;
+  demo_url?: string;
 }
 
 export interface ProjectsByCategory {

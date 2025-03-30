@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpIcon } from 'lucide-react';
+import { ArrowUpIcon, GithubIcon, ExternalLinkIcon } from 'lucide-react';
 import { Project } from '../types/project';
 import Carousel from './Carousel';
 
@@ -57,14 +57,40 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
               <p className="text-white">{project.description}</p>
 
               <div className="flex flex-wrap gap-3 mt-2">
-                {project.technologies.map((tech, techIndex) => (
-                  <span
-                    key={techIndex}
-                    className={`text-sm text-white border border-white px-3 py-1`}
+                {project.tags &&
+                  project.tags.map((tag, tagIndex) => (
+                    <span
+                      key={tagIndex}
+                      className={`text-sm text-white border border-white px-3 py-1`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+              </div>
+
+              <div className="flex gap-4 mt-4">
+                {project.github_url && (
+                  <a
+                    href={project.github_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-white hover:text-white/70"
                   >
-                    {tech}
-                  </span>
-                ))}
+                    <GithubIcon size={18} />
+                    <span>GitHub</span>
+                  </a>
+                )}
+                {project.demo_url && (
+                  <a
+                    href={project.demo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-white hover:text-white/70"
+                  >
+                    <ExternalLinkIcon size={18} />
+                    <span>Live Demo</span>
+                  </a>
+                )}
               </div>
             </div>
             {project.images && project.images.length > 0 && (

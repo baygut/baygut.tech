@@ -68,25 +68,28 @@ export async function getProjects() {
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         color VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL
+        category VARCHAR(50) NOT NULL,
+        github_url TEXT,
+        demo_url TEXT
       )
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS project_technologies (
+      CREATE TABLE IF NOT EXISTS project_tags (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        technology VARCHAR(255) NOT NULL,
+        tag VARCHAR(255) NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
       )
     `;
 
-    // Create project images table if it doesn't exist
+    // Update project_images table to store image data
     await sql`
       CREATE TABLE IF NOT EXISTS project_images (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        image_url TEXT NOT NULL,
+        image_data BYTEA NOT NULL,
+        image_type VARCHAR(50) NOT NULL,
         position INT NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
       )
@@ -94,31 +97,87 @@ export async function getProjects() {
 
     const projects = await sql`SELECT * FROM projects`;
 
-    // For each project, get its technologies and images
+    // For each project, get its tags and images
     const projectsWithDetails = await Promise.all(
       projects.map(async (project) => {
-        const technologies = await sql`
-          SELECT technology FROM project_technologies WHERE project_id = ${project.id}
+        const tags = await sql`
+          SELECT tag FROM project_tags WHERE project_id = ${project.id}
         `;
 
         const images = await sql`
-          SELECT image_url FROM project_images 
+          SELECT id, image_type FROM project_images 
           WHERE project_id = ${project.id}
           ORDER BY position
         `;
 
+        // Convert to URLs that point to our API
+        const imageUrls = images.map((img) => `/api/images/${img.id}`);
+
         return {
           ...project,
-          technologies: technologies.map((tech) => tech.technology),
-          images: images.map((img) => img.image_url),
+          tags: tags.map((tagItem) => tagItem.tag),
+          images: imageUrls,
         };
       })
     );
-
     return projectsWithDetails;
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw new Error('Failed to fetch projects');
+  }
+}
+
+// Add project action
+export async function addProject(formData: {
+  title: string;
+  description: string;
+  color: string;
+  category: string;
+  tags: string[];
+  images: { data: ArrayBuffer; type: string }[];
+  githubUrl?: string;
+  demoUrl?: string;
+}) {
+  try {
+    const sql = getNeonClient();
+    const { title, description, color, category, tags, images, githubUrl, demoUrl } = formData;
+
+    // Insert the project with the new fields
+    const insertedProject = await sql`
+      INSERT INTO projects (title, description, color, category, github_url, demo_url) 
+      VALUES (${title}, ${description}, ${color}, ${category}, ${githubUrl || null}, ${
+      demoUrl || null
+    })
+      RETURNING id
+    `;
+
+    const projectId = insertedProject[0].id;
+
+    // Insert each tag associated with the project
+    for (const tag of tags) {
+      await sql`
+        INSERT INTO project_tags (project_id, tag)
+        VALUES (${projectId}, ${tag})
+      `;
+    }
+
+    // Insert each image associated with the project
+    for (let i = 0; i < images.length; i++) {
+      const { data, type } = images[i];
+      await sql`
+        INSERT INTO project_images (project_id, image_data, image_type, position)
+        VALUES (${projectId}, ${Buffer.from(data)}, ${type}, ${i})
+      `;
+    }
+
+    // Revalidate the projects page to show the new project
+    revalidatePath('/projects');
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding project:', error);
+    return { success: false, error: 'Failed to add project' };
   }
 }
 
@@ -178,7 +237,7 @@ export async function seedDatabase(reset = false) {
     if (reset) {
       // Clear existing tables
       await sql`DROP TABLE IF EXISTS project_images CASCADE`;
-      await sql`DROP TABLE IF EXISTS project_technologies CASCADE`;
+      await sql`DROP TABLE IF EXISTS project_tags CASCADE`;
       await sql`DROP TABLE IF EXISTS projects CASCADE`;
       await sql`DROP TABLE IF EXISTS skills CASCADE`;
       await sql`DROP TABLE IF EXISTS about_content CASCADE`;
@@ -210,15 +269,17 @@ export async function seedDatabase(reset = false) {
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         color VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL
+        category VARCHAR(50) NOT NULL,
+        github_url TEXT,
+        demo_url TEXT
       )
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS project_technologies (
+      CREATE TABLE IF NOT EXISTS project_tags (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        technology VARCHAR(255) NOT NULL,
+        tag VARCHAR(255) NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
       )
     `;
@@ -227,7 +288,8 @@ export async function seedDatabase(reset = false) {
       CREATE TABLE IF NOT EXISTS project_images (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        image_url TEXT NOT NULL,
+        image_data BYTEA NOT NULL,
+        image_type VARCHAR(50) NOT NULL,
         position INT NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
       )
@@ -505,7 +567,7 @@ export async function seedDatabase(reset = false) {
       await sql`INSERT INTO resume (url) VALUES (${resumeUrl})`;
     }
 
-    // Insert projects and their technologies if they don't exist
+    // Insert projects and their tags if they don't exist
     if (parseInt(projectCount[0].count) === 0) {
       // Projects data
       const projects = [
@@ -515,12 +577,14 @@ export async function seedDatabase(reset = false) {
             'A native mobile shopping platform with personalized recommendations and AR try-on features.',
           color: 'blue',
           category: 'mobile',
-          technologies: ['React Native', 'Redux', 'Firebase'],
+          tags: ['React Native', 'Redux', 'Firebase'],
           images: [
             'https://images.unsplash.com/photo-1563013544-824ae1b704d3?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1472851294608-062f824d29cc?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/ecommerce-app',
+          demoUrl: 'https://example-app.com',
         },
         {
           title: 'Fitness Tracker',
@@ -528,34 +592,40 @@ export async function seedDatabase(reset = false) {
             'Health monitoring app with workout plans, progress tracking, and social features.',
           color: 'green',
           category: 'mobile',
-          technologies: ['Flutter', 'GraphQL', 'TypeScript'],
+          tags: ['Flutter', 'GraphQL', 'TypeScript'],
           images: [
             'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/fitness-tracker',
+          demoUrl: 'https://example-fitness.com',
         },
         {
           title: 'AR Navigation',
           description: 'Augmented reality navigation system for indoor and outdoor directions.',
           color: 'purple',
           category: 'mobile',
-          technologies: ['Swift', 'ARKit', 'CoreLocation'],
+          tags: ['Swift', 'ARKit', 'CoreLocation'],
           images: [
             'https://images.unsplash.com/photo-1580910051074-3eb694886505?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1581372041527-9c7f1e3285cb?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1565396435901-8f5d247028b3?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/ar-navigation',
+          demoUrl: 'https://example-ar.com',
         },
         {
           title: 'Portfolio Dashboard',
           description: 'Interactive web dashboard for displaying and managing creative portfolios.',
           color: 'yellow',
           category: 'web',
-          technologies: ['React', 'Next.js', 'TailwindCSS'],
+          tags: ['React', 'Next.js', 'TailwindCSS'],
           images: [
             'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/portfolio-dashboard',
+          demoUrl: 'https://example-portfolio.com',
         },
         {
           title: 'E-learning Platform',
@@ -563,11 +633,13 @@ export async function seedDatabase(reset = false) {
             'Comprehensive web platform for online courses with interactive learning tools.',
           color: 'red',
           category: 'web',
-          technologies: ['Vue.js', 'Firebase', 'Node.js'],
+          tags: ['Vue.js', 'Firebase', 'Node.js'],
           images: [
             'https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1516321497487-e288fb19713f?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/e-learning-platform',
+          demoUrl: 'https://example-elearning.com',
         },
         {
           title: 'Project Management Tool',
@@ -575,11 +647,13 @@ export async function seedDatabase(reset = false) {
             'Collaborative workspace for teams with task management and analytics features.',
           color: 'teal',
           category: 'web',
-          technologies: ['React', 'GraphQL', 'MongoDB'],
+          tags: ['React', 'GraphQL', 'MongoDB'],
           images: [
             'https://images.unsplash.com/photo-1572025442646-866d16c84a54?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/project-management-tool',
+          demoUrl: 'https://example-pm.com',
         },
         {
           title: 'Blockchain Explorer',
@@ -587,11 +661,13 @@ export async function seedDatabase(reset = false) {
             'Tool for visualizing and analyzing blockchain transactions and smart contracts.',
           color: 'orange',
           category: 'misc',
-          technologies: ['TypeScript', 'Ethers.js', 'D3.js'],
+          tags: ['TypeScript', 'Ethers.js', 'D3.js'],
           images: [
             'https://images.unsplash.com/photo-1639762681057-408e52192e55?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1639322537231-2f206e06af84?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/blockchain-explorer',
+          demoUrl: 'https://example-blockchain.com',
         },
         {
           title: 'AI Content Generator',
@@ -599,11 +675,13 @@ export async function seedDatabase(reset = false) {
             'Machine learning tool that creates personalized content for marketing campaigns.',
           color: 'pink',
           category: 'misc',
-          technologies: ['Python', 'TensorFlow', 'React'],
+          tags: ['Python', 'TensorFlow', 'React'],
           images: [
             'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1655720033654-a4239dd42d10?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/ai-content-generator',
+          demoUrl: 'https://example-ai.com',
         },
         {
           title: 'IoT Home Controller',
@@ -611,40 +689,47 @@ export async function seedDatabase(reset = false) {
             'System that connects and manages smart home devices through a single interface.',
           color: 'indigo',
           category: 'misc',
-          technologies: ['Node.js', 'MQTT', 'React Native'],
+          tags: ['Node.js', 'MQTT', 'React Native'],
           images: [
             'https://images.unsplash.com/photo-1558703224-d106f5929c72?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1585771724684-38269d6639fd?q=80&w=800&auto=format',
             'https://images.unsplash.com/photo-1563796442737-3501301632ee?q=80&w=800&auto=format',
           ],
+          githubUrl: 'https://github.com/example/iot-home-controller',
+          demoUrl: 'https://example-iot.com',
         },
       ];
 
-      // Insert each project and its technologies
+      // Insert each project
       for (const project of projects) {
-        // Insert the project
+        // Insert the project with GitHub and demo URLs
         const insertedProject = await sql`
-          INSERT INTO projects (title, description, color, category) 
-          VALUES (${project.title}, ${project.description}, ${project.color}, ${project.category})
+          INSERT INTO projects (title, description, color, category, github_url, demo_url) 
+          VALUES (${project.title}, ${project.description}, ${project.color}, ${
+          project.category
+        }, ${project.githubUrl || null}, ${project.demoUrl || null})
           RETURNING id
         `;
 
         const projectId = insertedProject[0].id;
 
-        // Insert each technology associated with the project
-        for (const tech of project.technologies) {
+        // Insert each tag associated with the project
+        for (const tag of project.tags) {
           await sql`
-            INSERT INTO project_technologies (project_id, technology)
-            VALUES (${projectId}, ${tech})
+            INSERT INTO project_tags (project_id, tag)
+            VALUES (${projectId}, ${tag})
           `;
         }
 
-        // Insert each image associated with the project
+        // Fetch and insert each image
         for (let i = 0; i < project.images.length; i++) {
-          await sql`
-            INSERT INTO project_images (project_id, image_url, position)
-            VALUES (${projectId}, ${project.images[i]}, ${i})
-          `;
+          const imageBuffer = await getImageBufferFromUrl(project.images[i]);
+          if (imageBuffer) {
+            await sql`
+              INSERT INTO project_images (project_id, image_data, image_type, position)
+              VALUES (${projectId}, ${Buffer.from(imageBuffer.data)}, ${imageBuffer.type}, ${i})
+            `;
+          }
         }
       }
     }
@@ -656,5 +741,397 @@ export async function seedDatabase(reset = false) {
   } catch (error) {
     console.error('Error seeding database:', error);
     return { success: false, error: 'Failed to seed database' };
+  }
+}
+
+// Get a single image by ID
+export async function getImage(id: string) {
+  try {
+    const sql = getNeonClient();
+
+    const result = await sql`
+      SELECT image_data, image_type 
+      FROM project_images 
+      WHERE id = ${id}
+    `;
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    return {
+      data: result[0].image_data,
+      type: result[0].image_type,
+    };
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return null;
+  }
+}
+
+// Get all unique categories
+export async function getCategories(): Promise<string[]> {
+  try {
+    const sql = getNeonClient();
+
+    // Create the projects table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        color VARCHAR(50) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        github_url TEXT,
+        demo_url TEXT
+      )
+    `;
+
+    // Get all unique categories from projects table
+    const result = await sql`
+      SELECT DISTINCT category FROM projects ORDER BY category
+    `;
+
+    // If no categories exist yet, return default ones
+    if (result.length === 0) {
+      return ['web', 'mobile', 'misc'];
+    }
+
+    return result.map((row) => row.category);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return ['web', 'mobile', 'misc']; // Return defaults on error
+  }
+}
+
+// Add a new category (this is just for tracking, as categories are stored with projects)
+export async function addCategory(category: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Since categories are stored with projects, we just need to validate
+    if (!category || category.trim().length === 0) {
+      return { success: false, error: 'Category name cannot be empty' };
+    }
+
+    if (category.length > 50) {
+      return { success: false, error: 'Category name cannot exceed 50 characters' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding category:', error);
+    return { success: false, error: 'Failed to add category' };
+  }
+}
+
+// Add a new skill
+export async function addSkill(skill: {
+  word: string;
+  description: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Validate input
+    if (!skill.word || !skill.description) {
+      return { success: false, error: 'Skill name and description are required' };
+    }
+
+    // Insert the skill
+    await sql`
+      INSERT INTO skills (word, description)
+      VALUES (${skill.word}, ${skill.description})
+    `;
+
+    // Revalidate paths that display skills
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding skill:', error);
+    return { success: false, error: 'Failed to add skill' };
+  }
+}
+
+// Delete a skill
+export async function deleteSkill(id: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Delete the skill
+    await sql`DELETE FROM skills WHERE id = ${id}`;
+
+    // Revalidate paths that display skills
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting skill:', error);
+    return { success: false, error: 'Failed to delete skill' };
+  }
+}
+
+// Update about content
+export async function updateAboutContent(
+  content: string[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Clear existing content
+    await sql`DELETE FROM about_content`;
+
+    // Insert each paragraph with position
+    for (let i = 0; i < content.length; i++) {
+      await sql`
+        INSERT INTO about_content (content, position)
+        VALUES (${content[i]}, ${i})
+      `;
+    }
+
+    // Revalidate paths that display about content
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating about content:', error);
+    return { success: false, error: 'Failed to update about content' };
+  }
+}
+
+// Update contact info
+export async function updateContactInfo({
+  contactItems,
+  socialLinks,
+  resumeUrl,
+}: {
+  contactItems: { type: string; value: string; href: string }[];
+  socialLinks: { icon: string; url: string; label: string }[];
+  resumeUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Update contact items
+    await sql`DELETE FROM contact_info`;
+    for (const item of contactItems) {
+      await sql`
+        INSERT INTO contact_info (type, value, href)
+        VALUES (${item.type}, ${item.value}, ${item.href})
+      `;
+    }
+
+    // Update social links
+    await sql`DELETE FROM social_links`;
+    for (const link of socialLinks) {
+      await sql`
+        INSERT INTO social_links (icon, url, label)
+        VALUES (${link.icon}, ${link.url}, ${link.label})
+      `;
+    }
+
+    // Update resume URL
+    if (resumeUrl) {
+      await sql`INSERT INTO resume (url) VALUES (${resumeUrl})`;
+    }
+
+    // Revalidate paths that display contact info
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating contact info:', error);
+    return { success: false, error: 'Failed to update contact info' };
+  }
+}
+
+// Get projects for admin (simplified version without image data)
+export async function getAdminProjects() {
+  try {
+    const sql = getNeonClient();
+
+    const projects = await sql`SELECT * FROM projects`;
+
+    // For each project, get its tags
+    const projectsWithTags = await Promise.all(
+      projects.map(async (project) => {
+        const tags = await sql`
+          SELECT tag FROM project_tags WHERE project_id = ${project.id}
+        `;
+
+        const imageCount = await sql`
+          SELECT COUNT(*) FROM project_images WHERE project_id = ${project.id}
+        `;
+
+        return {
+          ...project,
+          tags: tags.map((tagItem) => tagItem.tag),
+          imageCount: parseInt(imageCount[0].count),
+        };
+      })
+    );
+    return projectsWithTags;
+  } catch (error) {
+    console.error('Error fetching admin projects:', error);
+    throw new Error('Failed to fetch admin projects');
+  }
+}
+
+// Delete a project
+export async function deleteProject(id: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Delete related records first
+    await sql`DELETE FROM project_images WHERE project_id = ${id}`;
+    await sql`DELETE FROM project_tags WHERE project_id = ${id}`;
+
+    // Then delete the project
+    await sql`DELETE FROM projects WHERE id = ${id}`;
+
+    // Revalidate paths that display projects
+    revalidatePath('/projects');
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    return { success: false, error: 'Failed to delete project' };
+  }
+}
+
+// Get a single project with all details for editing
+export async function getProjectForEdit(id: number) {
+  try {
+    const sql = getNeonClient();
+
+    const project = await sql`SELECT * FROM projects WHERE id = ${id}`;
+
+    if (project.length === 0) {
+      return null;
+    }
+
+    const tags = await sql`
+      SELECT tag FROM project_tags WHERE project_id = ${id}
+    `;
+
+    // Don't fetch image data as it would be too large
+    // Just get the image IDs so we can display them
+    const images = await sql`
+      SELECT id, image_type FROM project_images 
+      WHERE project_id = ${id}
+      ORDER BY position
+    `;
+
+    return {
+      ...project[0],
+      tags: tags.map((tagItem) => tagItem.tag),
+      imageIds: images.map((img) => img.id),
+    };
+  } catch (error) {
+    console.error('Error fetching project for edit:', error);
+    return null;
+  }
+}
+
+// Update a project
+export async function updateProject(
+  id: number,
+  formData: {
+    title: string;
+    description: string;
+    color: string;
+    category: string;
+    tags: string[];
+    githubUrl?: string;
+    demoUrl?: string;
+    // We handle images separately to avoid loading huge amounts of data
+    removedImageIds?: number[];
+    newImages?: { data: ArrayBuffer; type: string }[];
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+    const {
+      title,
+      description,
+      color,
+      category,
+      tags,
+      githubUrl,
+      demoUrl,
+      removedImageIds,
+      newImages,
+    } = formData;
+
+    // Update the project details
+    await sql`
+      UPDATE projects 
+      SET 
+        title = ${title}, 
+        description = ${description}, 
+        color = ${color}, 
+        category = ${category},
+        github_url = ${githubUrl || null},
+        demo_url = ${demoUrl || null}
+      WHERE id = ${id}
+    `;
+
+    // Update tags - delete existing and insert new ones
+    await sql`DELETE FROM project_tags WHERE project_id = ${id}`;
+    for (const tag of tags) {
+      await sql`
+        INSERT INTO project_tags (project_id, tag)
+        VALUES (${id}, ${tag})
+      `;
+    }
+
+    // Delete removed images if any
+    if (removedImageIds && removedImageIds.length > 0) {
+      for (const imageId of removedImageIds) {
+        await sql`DELETE FROM project_images WHERE id = ${imageId}`;
+      }
+    }
+
+    // Add new images if any
+    if (newImages && newImages.length > 0) {
+      // Get current highest position
+      const positionResult = await sql`
+        SELECT COALESCE(MAX(position), -1) as max_position 
+        FROM project_images 
+        WHERE project_id = ${id}
+      `;
+      let position = parseInt(positionResult[0].max_position) + 1;
+
+      // Insert each new image
+      for (const { data, type } of newImages) {
+        await sql`
+          INSERT INTO project_images (project_id, image_data, image_type, position)
+          VALUES (${id}, ${Buffer.from(data)}, ${type}, ${position})
+        `;
+        position++;
+      }
+    }
+
+    // Revalidate paths that display projects
+    revalidatePath('/projects');
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating project:', error);
+    return { success: false, error: 'Failed to update project' };
+  }
+}
+
+// Sample images will now need to be fetched and converted to Buffers
+async function getImageBufferFromUrl(url: string) {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    return { data: arrayBuffer, type: contentType };
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return null;
   }
 }

@@ -8,8 +8,10 @@ export interface Project {
   title: string;
   description: string;
   color: string;
-  technologies: string[];
+  tags: string[]; // Changed from technologies to tags
   category: string;
+  github_url?: string; // Added GitHub URL
+  demo_url?: string; // Added demo URL
 }
 
 interface ProjectsSectionProps {

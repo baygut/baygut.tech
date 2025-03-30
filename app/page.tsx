@@ -18,6 +18,8 @@ export default async function Home() {
     )
     .catch(() => []);
   const aboutContentFromDb = await getAboutContent().catch(() => []);
+
+  // Updated to check for tags instead of technologies
   const projectsFromDb = await getProjects()
     .then((data) =>
       Array.isArray(data) &&
@@ -27,12 +29,13 @@ export default async function Home() {
           'description' in item &&
           'color' in item &&
           'category' in item &&
-          'technologies' in item
+          'tags' in item // Changed from technologies to tags
       )
         ? (data as Project[])
         : []
     )
     .catch(() => []);
+
   const contactInfoFromDb = await getContactInfo().catch(() => ({
     contactItems: [],
     socialLinks: [],
@@ -74,7 +77,6 @@ export default async function Home() {
 
       <ContactSection title="Say Hello." contactItems={contactItems} socialLinks={socialLinks} />
 
-      {/* Floating image button that appears when scrolled past hero section */}
       <FloatingModel3D imagePath="/sculpt.png" />
     </main>
   );
