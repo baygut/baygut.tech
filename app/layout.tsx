@@ -1,7 +1,15 @@
 import type { Metadata } from 'next';
-import './globals.css';
-import GlobalTooltip from './components/GlobalTooltip';
+import { Manrope, Sunflower } from 'next/font/google';
 import Script from 'next/script';
+import GlobalTooltip from './components/GlobalTooltip';
+import './globals.css';
+
+// Setup fonts
+const mainFont = Manrope({
+  subsets: ['latin'],
+  variable: '--font-main',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   icons: {
@@ -35,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${mainFont.variable}`}>
       <head>
         <style>
           {`
