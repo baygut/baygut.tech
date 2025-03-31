@@ -74,6 +74,20 @@ export async function getProjects() {
       )
     `;
 
+    // Add cover_image column if it doesn't exist
+    await sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'projects' AND column_name = 'cover_image'
+        ) THEN
+          ALTER TABLE projects ADD COLUMN cover_image BYTEA;
+          ALTER TABLE projects ADD COLUMN cover_image_type VARCHAR(50);
+        END IF;
+      END $$;
+    `;
+
     await sql`
       CREATE TABLE IF NOT EXISTS project_tags (
         id SERIAL PRIMARY KEY,
@@ -95,7 +109,8 @@ export async function getProjects() {
       )
     `;
 
-    const projects = await sql`SELECT * FROM projects`;
+    const projects =
+      await sql`SELECT id, title, description, color, category, github_url, demo_url FROM projects`;
 
     // For each project, get its tags and images
     const projectsWithDetails = await Promise.all(
@@ -113,10 +128,32 @@ export async function getProjects() {
         // Convert to URLs that point to our API
         const imageUrls = images.map((img) => `/api/images/${img.id}`);
 
+        // Check if the project has a cover image without fetching the actual binary data
+        const hasCoverImage = await sql`
+          SELECT EXISTS(
+            SELECT 1 FROM projects 
+            WHERE id = ${project.id} 
+            AND cover_image IS NOT NULL
+          ) as has_cover
+        `;
+
+        // Add cover image URL if exists
+        const coverImageUrl = hasCoverImage[0].has_cover
+          ? `/api/cover-image/${project.id}`
+          : undefined;
+
         return {
-          ...project,
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          color: project.color,
+          category: project.category,
+          githubUrl: project.github_url,
+          demoUrl: project.demo_url,
           tags: tags.map((tagItem) => tagItem.tag),
           images: imageUrls,
+          coverImage: coverImageUrl,
+          createdAt: new Date().toISOString(),
         };
       })
     );
@@ -137,17 +174,25 @@ export async function addProject(formData: {
   images: { data: ArrayBuffer; type: string }[];
   githubUrl?: string;
   demoUrl?: string;
+  coverImage?: { data: ArrayBuffer; type: string };
 }) {
   try {
     const sql = getNeonClient();
-    const { title, description, color, category, tags, images, githubUrl, demoUrl } = formData;
+    const { title, description, color, category, tags, images, githubUrl, demoUrl, coverImage } =
+      formData;
 
-    // Insert the project with the new fields
+    // Insert the project with the new fields, including cover image if provided
     const insertedProject = await sql`
-      INSERT INTO projects (title, description, color, category, github_url, demo_url) 
-      VALUES (${title}, ${description}, ${color}, ${category}, ${githubUrl || null}, ${
-      demoUrl || null
-    })
+      INSERT INTO projects (
+        title, description, color, category, github_url, demo_url,
+        cover_image, cover_image_type
+      ) 
+      VALUES (
+        ${title}, ${description}, ${color}, ${category}, 
+        ${githubUrl || null}, ${demoUrl || null},
+        ${coverImage ? Buffer.from(coverImage.data) : null},
+        ${coverImage ? coverImage.type : null}
+      )
       RETURNING id
     `;
 
@@ -467,6 +512,31 @@ export async function getImage(id: string) {
   }
 }
 
+// Get a cover image by project ID
+export async function getCoverImage(projectId: string) {
+  try {
+    const sql = getNeonClient();
+
+    const result = await sql`
+      SELECT cover_image, cover_image_type 
+      FROM projects 
+      WHERE id = ${projectId} AND cover_image IS NOT NULL
+    `;
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    return {
+      data: result[0].cover_image,
+      type: result[0].cover_image_type,
+    };
+  } catch (error) {
+    console.error('Error fetching cover image:', error);
+    return null;
+  }
+}
+
 // Get all unique categories
 export async function getCategories(): Promise<string[]> {
   try {
@@ -760,7 +830,7 @@ export async function getProjectForEdit(id: number) {
   }
 }
 
-// Update a project
+// Update a project - simplified version
 export async function updateProject(
   id: number,
   formData: {
@@ -771,9 +841,9 @@ export async function updateProject(
     tags: string[];
     githubUrl?: string;
     demoUrl?: string;
-    // We handle images separately to avoid loading huge amounts of data
     removedImageIds?: number[];
     newImages?: { data: ArrayBuffer; type: string }[];
+    coverImage?: { data: ArrayBuffer; type: string } | null;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -788,20 +858,54 @@ export async function updateProject(
       demoUrl,
       removedImageIds,
       newImages,
+      coverImage,
     } = formData;
 
-    // Update the project details
-    await sql`
-      UPDATE projects 
-      SET 
-        title = ${title}, 
-        description = ${description}, 
-        color = ${color}, 
-        category = ${category},
-        github_url = ${githubUrl || null},
-        demo_url = ${demoUrl || null}
-      WHERE id = ${id}
-    `;
+    // Handle cover image updates with a simple if/else
+    if (coverImage === null) {
+      // Case 1: Explicitly set cover image to null (remove it)
+      await sql`
+        UPDATE projects 
+        SET 
+          title = ${title}, 
+          description = ${description}, 
+          color = ${color}, 
+          category = ${category},
+          github_url = ${githubUrl || null},
+          demo_url = ${demoUrl || null},
+          cover_image = NULL,
+          cover_image_type = NULL
+        WHERE id = ${id}
+      `;
+    } else if (coverImage) {
+      // Case 2: Update with new cover image
+      await sql`
+        UPDATE projects 
+        SET 
+          title = ${title}, 
+          description = ${description}, 
+          color = ${color}, 
+          category = ${category},
+          github_url = ${githubUrl || null},
+          demo_url = ${demoUrl || null},
+          cover_image = ${Buffer.from(coverImage.data)},
+          cover_image_type = ${coverImage.type}
+        WHERE id = ${id}
+      `;
+    } else {
+      // Case 3: No change to cover image
+      await sql`
+        UPDATE projects 
+        SET 
+          title = ${title}, 
+          description = ${description}, 
+          color = ${color}, 
+          category = ${category},
+          github_url = ${githubUrl || null},
+          demo_url = ${demoUrl || null}
+        WHERE id = ${id}
+      `;
+    }
 
     // Update tags - delete existing and insert new ones
     await sql`DELETE FROM project_tags WHERE project_id = ${id}`;

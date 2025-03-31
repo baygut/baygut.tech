@@ -9,6 +9,7 @@ interface CarouselProps {
   hideNavigation?: boolean; // New prop to hide navigation arrows
   hideStatusDots?: boolean; // New prop to hide indicator dots
   tapToFullscreen?: boolean; // New prop to enable fullscreen modal viewing
+  className?: string; // Optional className prop for custom styling
 }
 
 const Carousel: React.FC<CarouselProps> = ({
@@ -19,6 +20,7 @@ const Carousel: React.FC<CarouselProps> = ({
   hideNavigation = false,
   hideStatusDots = false,
   tapToFullscreen = false,
+  className = '',
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,7 +94,7 @@ const Carousel: React.FC<CarouselProps> = ({
   }
 
   return (
-    <div className="relative w-full">
+    <div className={`relative w-full ${className}`}>
       <div className="overflow-hidden w-full h-full relative">
         <div
           className="flex transition-transform duration-500 ease-out h-full"
@@ -178,7 +180,7 @@ const Carousel: React.FC<CarouselProps> = ({
                     e.stopPropagation();
                     setModalImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
                   }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/30 p-3 rounded-full hover:bg-white/50"
+                  className="absolute -left-20 top-1/2 -translate-y-1/2 bg-white/30 p-3 rounded-full hover:bg-white/50"
                   aria-label="Previous image"
                 >
                   <ChevronLeftIcon size={24} />
@@ -188,7 +190,7 @@ const Carousel: React.FC<CarouselProps> = ({
                     e.stopPropagation();
                     setModalImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
                   }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/30 p-3 rounded-full hover:bg-white/50"
+                  className="absolute -right-20 top-1/2 -translate-y-1/2 bg-white/30 p-3 rounded-full hover:bg-white/50"
                   aria-label="Next image"
                 >
                   <ChevronRightIcon size={24} />

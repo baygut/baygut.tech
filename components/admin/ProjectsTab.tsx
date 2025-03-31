@@ -8,8 +8,8 @@ import {
   updateProject,
   deleteProject,
 } from '@/lib/actions';
-import { useState, useEffect } from 'react';
-import ImageUpload from '@/components/ImageUpload';
+import { useState, useEffect, useRef } from 'react';
+import ImageUpload, { ImageUploadRefType } from '@/components/ImageUpload';
 import { Pen, Trash, X } from 'lucide-react';
 
 type Project = {
@@ -21,6 +21,7 @@ type Project = {
   tags: string[];
   githubUrl?: string;
   demoUrl?: string;
+  coverImage?: string;
   images: { url: string; id?: string }[];
   createdAt: string;
 };
@@ -35,6 +36,8 @@ export default function ProjectsTab() {
     []
   );
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
+  const [coverImage, setCoverImage] = useState<{ data: ArrayBuffer; type: string } | null>(null);
+  const [hasCoverImage, setHasCoverImage] = useState(false);
 
   // States for project form
   const [projectForm, setProjectForm] = useState({
@@ -62,6 +65,10 @@ export default function ProjectsTab() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Add refs for the image uploads
+  const coverImageUploadRef = useRef<ImageUploadRefType>(null);
+  const galleryImagesUploadRef = useRef<ImageUploadRefType>(null);
+
   // Fetch projects on component mount
   useEffect(() => {
     fetchProjects();
@@ -72,9 +79,9 @@ export default function ProjectsTab() {
     setIsLoading(true);
     try {
       const fetchedProjects = await getProjects();
-      if (fetchedProjects) {
+      if (fetchedProjects && Array.isArray(fetchedProjects)) {
         setProjects(
-          fetchedProjects.map((project: any) => ({
+          fetchedProjects.map((project) => ({
             id: project.id || '',
             title: project.title || '',
             description: project.description || '',
@@ -83,7 +90,10 @@ export default function ProjectsTab() {
             tags: project.tags || [],
             githubUrl: project.githubUrl || undefined,
             demoUrl: project.demoUrl || undefined,
-            images: project.images.map((url: string) => ({ url })) || [],
+            coverImage: project.coverImage || undefined,
+            images: Array.isArray(project.images)
+              ? project.images.map((url: string) => ({ url }))
+              : [],
             createdAt: project.createdAt || '',
           }))
         );
@@ -119,6 +129,11 @@ export default function ProjectsTab() {
       demoUrl: project.demoUrl || '',
     });
     setMode('edit');
+
+    // Check if project has a cover image
+    setHasCoverImage(!!project.coverImage);
+    setCoverImage(null);
+
     // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -138,9 +153,15 @@ export default function ProjectsTab() {
       demoUrl: '',
     });
     setProjectImages([]);
+    setCoverImage(null);
+    setHasCoverImage(false);
     setCustomCategory('');
     setShowCustomInput(false);
     setMode('add');
+
+    // Reset the image upload components
+    if (coverImageUploadRef.current) coverImageUploadRef.current.reset();
+    if (galleryImagesUploadRef.current) galleryImagesUploadRef.current.reset();
   };
 
   // Handle project deletion
@@ -220,6 +241,27 @@ export default function ProjectsTab() {
     setCurrentProjectImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Handle updating cover image in edit mode
+  const handleRemoveCoverImage = () => {
+    setHasCoverImage(false);
+    setCoverImage(null);
+  };
+
+  // Handle cover image change - simplified
+  const handleCoverImageChange = (images: { data: ArrayBuffer; type: string }[]) => {
+    if (images.length > 0) {
+      setCoverImage(images[0]);
+      setHasCoverImage(true);
+    } else {
+      setCoverImage(null);
+    }
+  };
+
+  // Add separate handlers for the different image uploads
+  const handleGalleryImagesChange = (images: { data: ArrayBuffer; type: string }[]) => {
+    setProjectImages(images);
+  };
+
   // Handle project form submission
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -245,29 +287,35 @@ export default function ProjectsTab() {
         .filter((tag) => tag);
 
       if (mode === 'edit' && currentProjectId) {
-        // Update existing project
-        const result = await updateProject(
-          parseInt(currentProjectId!, 10), // Ensure currentProjectId is a number
-          {
-            title: projectForm.title,
-            description: projectForm.description,
-            color: projectForm.color,
-            category: showCustomInput ? customCategory : projectForm.category,
-            tags: tagsArray,
-            newImages: projectImages.length > 0 ? projectImages : undefined, // Only update images if new ones are provided
-            githubUrl: projectForm.githubUrl || undefined,
-            demoUrl: projectForm.demoUrl || undefined,
-            removedImageIds: removedImageIds.length > 0 ? removedImageIds : undefined, // Send removed image IDs
-          }
-        );
+        // Simplified update logic
+        const updateData = {
+          title: projectForm.title,
+          description: projectForm.description,
+          color: projectForm.color,
+          category: showCustomInput ? customCategory : projectForm.category,
+          tags: tagsArray,
+          githubUrl: projectForm.githubUrl || undefined,
+          demoUrl: projectForm.demoUrl || undefined,
+          newImages: projectImages.length > 0 ? projectImages : undefined,
+          removedImageIds: removedImageIds.length > 0 ? removedImageIds : undefined,
+          // Always pass the cover image state - null means remove, new object means update
+          coverImage: coverImage,
+        };
+
+        const result = await updateProject(parseInt(currentProjectId!, 10), updateData);
 
         setProjectResult(result);
 
         if (result.success) {
           // Reset form and switch back to add mode
           handleCancelEdit();
+
+          // Reset the image upload components
+          if (coverImageUploadRef.current) coverImageUploadRef.current.reset();
+          if (galleryImagesUploadRef.current) galleryImagesUploadRef.current.reset();
+
           // Refresh projects list
-          fetchProjects();
+          await fetchProjects();
         }
       } else {
         // Add new project
@@ -280,6 +328,7 @@ export default function ProjectsTab() {
           images: projectImages,
           githubUrl: projectForm.githubUrl || undefined,
           demoUrl: projectForm.demoUrl || undefined,
+          coverImage: coverImage || undefined, // Add cover image for new project
         });
 
         setProjectResult(result);
@@ -296,8 +345,14 @@ export default function ProjectsTab() {
             demoUrl: '',
           });
           setProjectImages([]);
+          setCoverImage(null);
+          setHasCoverImage(false);
           setCustomCategory('');
           setShowCustomInput(false);
+
+          // Reset the image upload components
+          if (coverImageUploadRef.current) coverImageUploadRef.current.reset();
+          if (galleryImagesUploadRef.current) galleryImagesUploadRef.current.reset();
 
           // Refresh projects list
           fetchProjects();
@@ -531,7 +586,49 @@ export default function ProjectsTab() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Images</label>
+          <label className="block text-sm font-medium mb-1">Cover Image</label>
+
+          {/* Show existing cover image */}
+          {mode === 'edit' && hasCoverImage && !coverImage && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <img
+                  src={`/api/cover-image/${currentProjectId}?t=${Date.now()}`}
+                  alt="Current cover image"
+                  className="h-20 w-auto rounded object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveCoverImage}
+                  className="p-1 bg-red-500 text-white rounded-full"
+                  title="Remove cover image"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show cover image upload component */}
+          <ImageUpload
+            ref={coverImageUploadRef}
+            onImagesChange={handleCoverImageChange}
+            required={false}
+            maxWidth={800}
+            maxHeight={800}
+            quality={0.9}
+            preserveQuality={true}
+            label="Upload Cover Image"
+            singleImage={true}
+            inputId="cover-image-upload"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Cover image will be shown in project listings and when no gallery images are present
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Project Images</label>
           {mode === 'edit' && currentProjectImages.length > 0 && (
             <div className="mb-4">
               <p className="text-sm mb-2">Current Images:</p>
@@ -562,14 +659,18 @@ export default function ProjectsTab() {
             </div>
           )}
           <ImageUpload
-            onImagesChange={setProjectImages}
-            required={mode === 'add'}
-            maxWidth={800}
-            maxHeight={800}
-            quality={0.7}
+            ref={galleryImagesUploadRef}
+            onImagesChange={handleGalleryImagesChange}
+            required={mode === 'add' && !coverImage}
+            maxWidth={1200}
+            maxHeight={1200}
+            quality={0.9}
+            preserveQuality={true}
+            label="Upload Gallery Images"
+            inputId="gallery-images-upload" // Add a unique ID
           />
           <p className="text-xs text-gray-400 mt-1">
-            Recommended: Upload images smaller than 1MB each for best performance
+            These images will appear in the project gallery
           </p>
         </div>
 

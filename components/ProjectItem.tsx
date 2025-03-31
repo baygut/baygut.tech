@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpIcon, GithubIcon, ExternalLinkIcon, ArrowRight } from 'lucide-react';
+import { GithubIcon, ExternalLinkIcon, ArrowRight } from 'lucide-react';
 import { Project } from '../types/project';
 import Carousel from './Carousel';
 
@@ -29,21 +29,34 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
 
   return (
     <div className="border-l-2 text-white border-white/40 pl-4">
-      <button
-        onClick={() => toggleProject(project.title)}
-        className="w-full text-black flex justify-between items-center text-left"
-      >
-        <h3 className="text-2xl font-bold text-black">{project.title}</h3>
-        <span className="text-[var(--color-blue)]">
-          <motion.div
-            initial={{ rotate: 0 }}
-            animate={{ rotate: isExpanded ? 90 : 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <ArrowRight size={30} />
-          </motion.div>
-        </span>
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button
+          onClick={() => toggleProject(project.title)}
+          className="w-full text-black flex justify-between items-center text-left mb-2"
+        >
+          <h3 className="text-2xl font-bold text-black">{project.title}</h3>
+          <div className="flex flex-row items-center justify-center gap-2">
+            {project.coverImage && (
+              <div className="hidden md:block w-16 h-16 rounded overflow-hidden flex-shrink-0">
+                <img
+                  src={project.coverImage}
+                  alt={`${project.title} cover`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <span className="text-[var(--color-blue)]">
+              <motion.div
+                initial={{ rotate: 0 }}
+                animate={{ rotate: isExpanded ? 90 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ArrowRight size={30} />
+              </motion.div>
+            </span>
+          </div>
+        </button>
+      </div>
 
       <AnimatePresence>
         {isExpanded && (
@@ -76,9 +89,9 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
               </div>
 
               <div className="flex gap-4 mt-4">
-                {project.github_url && (
+                {project.githubUrl && (
                   <a
-                    href={project.github_url}
+                    href={project.demoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-white hover:text-white/70"
@@ -87,9 +100,9 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
                     <span>GitHub</span>
                   </a>
                 )}
-                {project.demo_url && (
+                {project.demoUrl && (
                   <a
-                    href={project.demo_url}
+                    href={project.demoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-white hover:text-white/70"
@@ -100,6 +113,15 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
                 )}
               </div>
             </div>
+            {project.coverImage && !project.images?.length && (
+              <div className="w-full md:w-1/2 p-4">
+                <img
+                  src={project.coverImage}
+                  alt={`${project.title} cover`}
+                  className="w-full h-auto rounded object-cover"
+                />
+              </div>
+            )}
             {project.images && project.images.length > 0 && (
               <Carousel
                 hideNavigation
@@ -107,6 +129,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
                 images={project.images}
                 title={project.title}
                 autoSlide={true}
+                className="pe-2"
               />
             )}
           </motion.div>

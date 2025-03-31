@@ -12,6 +12,8 @@ export interface Project {
   category: string;
   github_url?: string; // Added GitHub URL
   demo_url?: string; // Added demo URL
+  coverImage?: string; // Added cover image URL
+  images?: string[]; // Make regular images optional
 }
 
 interface ProjectsSectionProps {

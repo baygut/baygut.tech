@@ -3,11 +3,12 @@ export interface Project {
   title: string;
   description: string;
   color: string;
-  category: string;
   tags: string[];
+  category: string;
+  githubUrl?: string;
+  demoUrl?: string;
+  coverImage?: string;
   images?: string[];
-  github_url?: string;
-  demo_url?: string;
 }
 
 export interface ProjectsByCategory {
