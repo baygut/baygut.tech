@@ -10,7 +10,7 @@ import {
 } from '@/lib/actions';
 import { useState, useEffect } from 'react';
 import ImageUpload from '@/components/ImageUpload';
-import { Pen, Trash } from 'lucide-react';
+import { Pen, Trash, X } from 'lucide-react';
 
 type Project = {
   id: string;
@@ -21,7 +21,7 @@ type Project = {
   tags: string[];
   githubUrl?: string;
   demoUrl?: string;
-  images: { url: string }[];
+  images: { url: string; id?: string }[];
   createdAt: string;
 };
 
@@ -31,7 +31,10 @@ export default function ProjectsTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'add' | 'edit'>('add');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [currentProjectImages, setCurrentProjectImages] = useState<{ url: string }[]>([]);
+  const [currentProjectImages, setCurrentProjectImages] = useState<{ url: string; id?: string }[]>(
+    []
+  );
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
 
   // States for project form
   const [projectForm, setProjectForm] = useState({
@@ -95,7 +98,17 @@ export default function ProjectsTab() {
   // Populate form with project data for editing
   const handleEditProject = (project: Project) => {
     setCurrentProjectId(project.id);
-    setCurrentProjectImages(project.images);
+    setCurrentProjectImages(
+      project.images.map((img) => {
+        // Extract the ID from the URL if it exists
+        const id = img.url.split('/').pop();
+        return {
+          url: img.url,
+          id,
+        };
+      })
+    );
+    setRemovedImageIds([]); // Reset removed image IDs when starting a new edit
     setProjectForm({
       title: project.title,
       description: project.description,
@@ -114,6 +127,7 @@ export default function ProjectsTab() {
   const handleCancelEdit = () => {
     setCurrentProjectId(null);
     setCurrentProjectImages([]);
+    setRemovedImageIds([]);
     setProjectForm({
       title: '',
       description: '',
@@ -195,6 +209,17 @@ export default function ProjectsTab() {
     setProjectForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle removing an image from the current project
+  const handleRemoveImage = (index: number, imageId?: string) => {
+    // If the image has an ID, add it to the removedImageIds array
+    if (imageId) {
+      setRemovedImageIds((prev) => [...prev, parseInt(imageId, 10)]);
+    }
+
+    // Remove the image from the currentProjectImages array
+    setCurrentProjectImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Handle project form submission
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -232,6 +257,7 @@ export default function ProjectsTab() {
             newImages: projectImages.length > 0 ? projectImages : undefined, // Only update images if new ones are provided
             githubUrl: projectForm.githubUrl || undefined,
             demoUrl: projectForm.demoUrl || undefined,
+            removedImageIds: removedImageIds.length > 0 ? removedImageIds : undefined, // Send removed image IDs
           }
         );
 
@@ -511,16 +537,27 @@ export default function ProjectsTab() {
               <p className="text-sm mb-2">Current Images:</p>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {currentProjectImages.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image.url}
-                    alt={`Current image ${index + 1}`}
-                    className="h-20 w-auto rounded object-cover"
-                  />
+                  <div key={index} className="relative group">
+                    <img
+                      src={image.url}
+                      alt={`Current image ${index + 1}`}
+                      className="h-20 w-auto rounded object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index, image.id)}
+                      className="absolute inset-0 bg-red-500 bg-opacity-50 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      title="Remove image"
+                    >
+                      <X size={16} className="opacity-100" strokeWidth={3} />
+                    </button>
+                  </div>
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                {mode === 'edit' ? 'Upload new images to replace the current ones (optional)' : ''}
+                {mode === 'edit'
+                  ? 'Upload new images to add more, or click the X to remove existing ones'
+                  : ''}
               </p>
             </div>
           )}

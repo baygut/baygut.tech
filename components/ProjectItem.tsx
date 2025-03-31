@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpIcon, GithubIcon, ExternalLinkIcon } from 'lucide-react';
+import { ArrowUpIcon, GithubIcon, ExternalLinkIcon, ArrowRight } from 'lucide-react';
 import { Project } from '../types/project';
 import Carousel from './Carousel';
 
@@ -37,10 +37,10 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
         <span className="text-[var(--color-blue)]">
           <motion.div
             initial={{ rotate: 0 }}
-            animate={{ rotate: isExpanded ? 180 : 0 }}
+            animate={{ rotate: isExpanded ? 90 : 0 }}
             transition={{ duration: 0.3 }}
           >
-            <ArrowUpIcon size={30} />
+            <ArrowRight size={30} />
           </motion.div>
         </span>
       </button>
@@ -56,7 +56,12 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
           >
             <div className="mt-3 space-y-3">
               <div className={`h-1 w-16 bg-[${projectColor}]`}></div>
-              <p className="text-white">{project.description}</p>
+              <p
+                className="text-white min-w-[40vw]"
+                dangerouslySetInnerHTML={{
+                  __html: project.description.replace(/\n/g, '<br />'),
+                }}
+              ></p>
 
               <div className="flex flex-wrap gap-3 mt-2">
                 {project.tags &&

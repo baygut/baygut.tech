@@ -1,6 +1,6 @@
 'use client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpIcon } from 'lucide-react';
+import { ArrowRight, ArrowUpIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import ProjectItem from './ProjectItem';
 
@@ -62,10 +62,10 @@ const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects }) => {
                 <span className="text-[var(--color-blue)]">
                   <motion.div
                     initial={{ rotate: 0 }}
-                    animate={{ rotate: activeCategory === category ? 180 : 0 }}
+                    animate={{ rotate: activeCategory === category ? 90 : 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <ArrowUpIcon size={50} />
+                    <ArrowRight size={50} />
                   </motion.div>
                 </span>
               </button>
