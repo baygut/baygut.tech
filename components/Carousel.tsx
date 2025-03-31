@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, TouchEvent, MouseEvent } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, X as CloseIcon } from 'lucide-react';
 
 interface CarouselProps {
@@ -27,6 +27,13 @@ const Carousel: React.FC<CarouselProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
 
+  // Swipe functionality state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Minimum swipe distance (px)
+  const minSwipeDistance = 50;
+
   // Function to move to the next slide
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex === images.length - 1 ? 0 : prevIndex + 1));
@@ -35,6 +42,61 @@ const Carousel: React.FC<CarouselProps> = ({
   // Function to move to the previous slide
   const prevSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
+  };
+
+  // Handle touch/swipe start
+  const handleTouchStart = (e: TouchEvent | MouseEvent) => {
+    // For touch events
+    if ('touches' in e) {
+      setTouchStart(e.touches[0].clientX);
+      setTouchEnd(null);
+      return;
+    }
+    // For mouse events
+    setTouchStart(e.clientX);
+    setTouchEnd(null);
+  };
+
+  // Handle touch/swipe move
+  const handleTouchMove = (e: TouchEvent | MouseEvent) => {
+    // For touch events
+    if ('touches' in e) {
+      setTouchEnd(e.touches[0].clientX);
+      return;
+    }
+    // For mouse events
+    setTouchEnd(e.clientX);
+  };
+
+  // Handle touch/swipe end
+  const handleTouchEnd = (isModal = false) => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      // Handle left swipe - go to next
+      if (isModal) {
+        setModalImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+      } else {
+        nextSlide();
+      }
+    }
+
+    if (isRightSwipe) {
+      // Handle right swipe - go to previous
+      if (isModal) {
+        setModalImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      } else {
+        prevSlide();
+      }
+    }
+
+    // Reset
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   // Function to handle fullscreen modal
@@ -127,6 +189,13 @@ const Carousel: React.FC<CarouselProps> = ({
         <div
           className="flex transition-transform duration-500 ease-out h-full"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={() => handleTouchEnd()}
+          onMouseDown={handleTouchStart}
+          onMouseMove={touchStart ? handleTouchMove : undefined}
+          onMouseUp={() => handleTouchEnd()}
+          onMouseLeave={() => touchStart && handleTouchEnd()}
         >
           {images.map((image, index) => (
             <div key={index} className="min-w-full w-full h-full flex items-center justify-center">
@@ -188,11 +257,19 @@ const Carousel: React.FC<CarouselProps> = ({
           <div
             className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center"
             onClick={(e) => e.stopPropagation()} // Prevent clicks on the content from closing modal
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={() => handleTouchEnd(true)}
+            onMouseDown={handleTouchStart}
+            onMouseMove={touchStart ? handleTouchMove : undefined}
+            onMouseUp={() => handleTouchEnd(true)}
+            onMouseLeave={() => touchStart && handleTouchEnd(true)}
           >
             <img
               src={images[modalImageIndex]}
               alt={`${title} - fullscreen image ${modalImageIndex + 1}`}
               className="max-h-screen max-w-full object-contain"
+              draggable="false" // Prevent image dragging to enable clean swipe
             />
 
             {/* Image counter - shows current/total */}
