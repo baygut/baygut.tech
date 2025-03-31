@@ -19,14 +19,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   resumeUrl = '/resume.pdf',
 }) => {
   // Initialize with a default value that's the same on both server and client
-  const [autoRotate, setAutoRotate] = React.useState(false);
+  const [autoRotate, setAutoRotate] = React.useState(true);
   const [isMobile, setIsMobile] = React.useState(false);
 
   // Use useEffect to update the state based on window size after component mounts on client
   useEffect(() => {
     const isMobileDevice = window.innerWidth <= 768;
     setIsMobile(isMobileDevice);
-    setAutoRotate(isMobileDevice);
   }, []);
 
   const handleRotationToggle = () => {
