@@ -35,8 +35,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
     <SectionWithModel3D
       autoRotate={autoRotate}
       modelPath="/me.glb"
-      scale={4}
-      rotationSpeed={0.01}
+      scale={1}
       className="bg-gradient-to-b from-gray-100 to-gray-200"
     >
       <div className="container mx-auto px-4 py-20 flex flex-col justify-start items-start">

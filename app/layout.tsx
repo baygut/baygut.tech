@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import GlobalTooltip from './components/GlobalTooltip';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   icons: {
@@ -60,6 +61,12 @@ export default function RootLayout({
             }
           `}
         </style>
+        <Script
+          async
+          strategy="afterInteractive"
+          type="module"
+          src="https://registry.npmjs.org/@google/model-viewer/-/model-viewer-4.0.0.tgz/model-viewer.min.js"
+        />
       </head>
       <body>
         {children}

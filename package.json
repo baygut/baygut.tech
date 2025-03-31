@@ -12,6 +12,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.0.0",
     "@neondatabase/serverless": "^1.0.0",
     "@react-three/drei": "^10.0.5",
     "@react-three/fiber": "^9.1.0",

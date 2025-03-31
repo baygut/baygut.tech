@@ -1,7 +1,6 @@
-"use client";
-
-import { ReactNode } from "react";
-import SpinningModel3D from "./SpinningModel3D";
+import { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+const SpinningModel3D = dynamic(() => import('./SpinningModel3D'), { ssr: false });
 
 interface SectionWithModel3DProps {
   children: ReactNode;
@@ -16,18 +15,14 @@ const SectionWithModel3D = ({
   children,
   modelPath,
   scale = 1,
-  className = "",
+  className = '',
   autoRotate = false,
 }: SectionWithModel3DProps) => {
   return (
     <section className={`relative min-h-screen w-full ${className}`}>
       {/* 3D Model Background */}
       <div className="absolute inset-0 z-10 pointer-events-none">
-        <SpinningModel3D
-          autoRotate={autoRotate}
-          modelPath={modelPath}
-          scale={scale}
-        />
+        <SpinningModel3D autoRotate={autoRotate} modelPath={modelPath} scale={scale} />
       </div>
 
       {/* Section Content */}
