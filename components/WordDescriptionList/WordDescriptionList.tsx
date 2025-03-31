@@ -63,7 +63,7 @@ const WordDescriptionList: React.FC<WordDescriptionListProps> = ({
         {rows.map((row, rowIndex) => (
           <div
             key={`row-${rowIndex}`}
-            className="flex flex-wrap gap-2 md:gap-3 max-sm:gap-0 justify-between"
+            className="flex flex-wrap gap-2 md:gap-3 max-sm:gap-0 justify-between max-md:px-4"
           >
             {row.map((item) => (
               <WordItem

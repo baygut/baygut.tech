@@ -37,7 +37,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
           <h3 className="text-2xl font-bold text-black">{project.title}</h3>
           <div className="flex flex-row items-center justify-center gap-2">
             {project.coverImage && (
-              <div className="hidden md:block w-16 h-16 rounded overflow-hidden flex-shrink-0">
+              <div className="block w-16 h-16 rounded overflow-hidden flex-shrink-0">
                 <img
                   src={project.coverImage}
                   alt={`${project.title} cover`}
