@@ -89,6 +89,34 @@ const Carousel: React.FC<CarouselProps> = ({
           }`}
           onClick={() => tapToFullscreen && openModal(0)}
         />
+
+        {/* Fullscreen modal for single image */}
+        {isModalOpen && tapToFullscreen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-90 z-[9999] flex items-center justify-center"
+            onClick={closeModal}
+          >
+            <div
+              className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={images[0]}
+                alt={`${title} - fullscreen image`}
+                className="max-h-screen max-w-full object-contain"
+              />
+
+              {/* Close button */}
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 bg-white/30 p-2 rounded-full hover:bg-white/50"
+                aria-label="Close fullscreen view"
+              >
+                <CloseIcon size={24} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
