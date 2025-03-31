@@ -19,7 +19,7 @@ const WordItem: React.FC<WordItemProps> = ({
   return (
     <button
       onClick={() => onClick(item)}
-      className={`text-5xl font-bold relative focus:outline-none transition-all 
+      className={`text-5xl max-sm:text-2xl font-bold relative focus:outline-none transition-all 
         ${
           isSelected
             ? `text-[var(--color-yellow)] opacity-100`
