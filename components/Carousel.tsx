@@ -256,7 +256,6 @@ const Carousel: React.FC<CarouselProps> = ({
         >
           <div
             className="relative w-full h-full max-w-6xl mx-auto flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()} // Prevent clicks on the content from closing modal
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={() => handleTouchEnd(true)}
