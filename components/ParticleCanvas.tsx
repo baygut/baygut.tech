@@ -72,6 +72,7 @@ export function ParticleCanvas({
   const animationFrameId = useRef<number | null>(null);
   const particlesRef = useRef<Particle[]>([]);
   const explosionStartTimeRef = useRef<number | null>(null);
+  const debugMode = false;
 
   // Initialize particles
   const initializeParticles = useCallback(
@@ -114,7 +115,7 @@ export function ParticleCanvas({
       }
 
       particlesRef.current = newParticles;
-      console.log(`Initialized ${newParticles.length} orbiting particles.`);
+      debugMode && console.log(`Initialized ${newParticles.length} orbiting particles.`);
     },
     [particleCount, circleX, circleY, circleRadius]
   );
@@ -165,7 +166,8 @@ export function ParticleCanvas({
         if (canvasRef.current) {
           canvasRef.current.width = canvasRef.current.clientWidth;
           canvasRef.current.height = canvasRef.current.clientHeight;
-          console.log(`Canvas resized to ${canvasRef.current.width}x${canvasRef.current.height}`);
+          debugMode &&
+            console.log(`Canvas resized to ${canvasRef.current.width}x${canvasRef.current.height}`);
           // Re-initialize particles respecting new circle position potentially
           initializeParticles(canvasRef.current);
         }
@@ -460,11 +462,11 @@ export function ParticleCanvas({
       canvasRef.current &&
       particlesRef.current.length > 0
     ) {
-      console.log('Starting particle animation loop');
+      debugMode && console.log('Starting particle animation loop');
       animationFrameId.current = requestAnimationFrame(animate);
     } else if (!isActive && animationFrameId.current) {
       // Stop the loop if isActive becomes false
-      console.log('Stopping particle animation loop (isActive changed)');
+      debugMode && console.log('Stopping particle animation loop (isActive changed)');
       cancelAnimationFrame(animationFrameId.current);
       animationFrameId.current = null;
     }
@@ -472,11 +474,12 @@ export function ParticleCanvas({
     // Cleanup function: ensure animation stops on unmount
     return () => {
       if (animationFrameId.current) {
-        console.log('Stopping particle animation loop on cleanup');
+        debugMode && console.log('Stopping particle animation loop on cleanup');
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, animate]); // Rerun only when isActive or animate changes
 
   return (

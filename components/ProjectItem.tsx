@@ -25,8 +25,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
     };
   }, [isExpanded, toggleProject, project.title]);
 
-  console.log(project.color, project.title);
-
   return (
     <div className="border-l-2 text-white border-white/40 pl-4">
       <div className="flex items-center justify-between gap-4">

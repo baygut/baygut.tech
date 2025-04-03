@@ -76,7 +76,6 @@ const ContactSection: React.FC<ContactSectionProps> = ({
         x: rect.left + 50, // Adjust offset as needed
         y: rect.top + rect.height / 2,
       });
-      // console.log("Anchor Pos:", { x: rect.left + 50, y: rect.top + rect.height / 2 });
     }
   }, []); // No dependencies, relies on ref having current value when called
 
