@@ -1,10 +1,16 @@
+export interface Category {
+  id: number;
+  name: string;
+  display_order?: number;
+}
+
 export interface Project {
   id?: number;
   title: string;
   description: string;
   color: string;
   tags: string[];
-  category: string;
+  category: Category;
   githubUrl?: string;
   demoUrl?: string;
   coverImage?: string;
@@ -12,5 +18,5 @@ export interface Project {
 }
 
 export interface ProjectsByCategory {
-  [category: string]: Project[];
+  [categoryId: number]: Project[];
 }

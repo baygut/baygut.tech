@@ -8,6 +8,7 @@ import FloatingModel3D from '@/components/FloatingModel3D';
 import {
   getAboutContent,
   getBlogPosts,
+  getCategories,
   getContactInfo,
   getProjects,
   getSkills,
@@ -43,6 +44,8 @@ export default async function Home() {
         : []
     )
     .catch(() => []);
+
+  const categoriesFromDb = await getCategories();
 
   const contactInfoFromDb = await getContactInfo().catch(() => ({
     contactItems: [],
@@ -94,7 +97,7 @@ export default async function Home() {
 
       <SkillsSection skills={skills} />
 
-      <ProjectsSection projects={projects} />
+      <ProjectsSection projects={projects} categories={categoriesFromDb} />
 
       <div id="blog">
         <BlogSection posts={blogPosts} />

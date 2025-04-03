@@ -25,7 +25,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
     };
   }, [isExpanded, toggleProject, project.title]);
 
-  const projectColor = `var(--color-${project.color})`;
+  console.log(project.color, project.title);
 
   return (
     <div className="border-l-2 text-white border-white/40 pl-4">
@@ -68,7 +68,10 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, isExpanded, togglePr
             className="overflow-hidden bg-[var(--color-red)] ps-2 flex flex-col md:flex-row gap-4"
           >
             <div className="mt-3 space-y-3">
-              <div className={`h-1 w-16 bg-[${projectColor}]`}></div>
+              <div
+                style={{ backgroundColor: `var(--color-${project.color})` }}
+                className={'h-1 w-16'}
+              ></div>
               <p
                 className="text-white min-w-[40vw]"
                 dangerouslySetInnerHTML={{

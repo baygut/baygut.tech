@@ -4,20 +4,26 @@ import {
   addProject,
   getCategories,
   addCategory,
+  updateCategory,
+  deleteCategory,
   getProjects,
   updateProject,
   deleteProject,
 } from '@/lib/actions';
 import { useState, useEffect, useRef } from 'react';
 import ImageUpload, { ImageUploadRefType } from '@/components/ImageUpload';
-import { Pen, Trash, X } from 'lucide-react';
+import { Pen, Trash, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Category } from '@/types/project';
 
 type Project = {
   id: string;
   title: string;
   description: string;
   color: string;
-  category: string;
+  category: {
+    id: number;
+    name: string;
+  };
   tags: string[];
   githubUrl?: string;
   demoUrl?: string;
@@ -44,7 +50,7 @@ export default function ProjectsTab() {
     title: '',
     description: '',
     color: 'blue',
-    category: 'web',
+    categoryId: 0,
     tags: '',
     githubUrl: '',
     demoUrl: '',
@@ -56,22 +62,32 @@ export default function ProjectsTab() {
   const [projectImages, setProjectImages] = useState<{ data: ArrayBuffer; type: string }[]>([]);
 
   // States for category management
-  const [categories, setCategories] = useState<string[]>(['web', 'mobile', 'misc']);
-  const [customCategory, setCustomCategory] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryMode, setCategoryMode] = useState<'view' | 'add' | 'edit'>('view');
+  const [categoryForm, setCategoryForm] = useState({ name: '', displayOrder: 0 });
+  const [currentCategoryId, setCurrentCategoryId] = useState<number | null>(null);
+  const [categoryResult, setCategoryResult] = useState<{
+    success?: boolean;
+    error?: string;
+  } | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   // New states for search and multi-selection
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  categories.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
   // Add refs for the image uploads
   const coverImageUploadRef = useRef<ImageUploadRefType>(null);
   const galleryImagesUploadRef = useRef<ImageUploadRefType>(null);
 
-  // Fetch projects on component mount
+  // Fetch projects and categories on component mount
   useEffect(() => {
     fetchProjects();
+    fetchCategories();
   }, []);
 
   // Fetch existing projects
@@ -82,11 +98,11 @@ export default function ProjectsTab() {
       if (fetchedProjects && Array.isArray(fetchedProjects)) {
         setProjects(
           fetchedProjects.map((project) => ({
-            id: project.id || '',
+            id: String(project.id) || '',
             title: project.title || '',
             description: project.description || '',
             color: project.color || '',
-            category: project.category || '',
+            category: project.category || { id: 0, name: 'misc' },
             tags: project.tags || [],
             githubUrl: project.githubUrl || undefined,
             demoUrl: project.demoUrl || undefined,
@@ -94,7 +110,7 @@ export default function ProjectsTab() {
             images: Array.isArray(project.images)
               ? project.images.map((url: string) => ({ url }))
               : [],
-            createdAt: project.createdAt || '',
+            createdAt: `${project.id}` || '',
           }))
         );
       }
@@ -102,6 +118,201 @@ export default function ProjectsTab() {
       console.error('Failed to load projects:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch existing categories
+  const fetchCategories = async () => {
+    try {
+      const fetchedCategories = await getCategories();
+      if (fetchedCategories && fetchedCategories.length > 0) {
+        setCategories(
+          fetchedCategories.map((category: Record<string, any>) => ({
+            id: category.id,
+            name: category.name,
+            display_order: category.display_order || 0,
+          }))
+        );
+
+        // Set default category for new projects if none is selected
+        if (projectForm.categoryId === 0 && fetchedCategories.length > 0) {
+          setProjectForm((prev) => ({ ...prev, categoryId: fetchedCategories[0].id }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
+
+  // Category management functions
+  const handleAddCategory = () => {
+    setCategoryMode('add');
+    // Set a default display order that's after the last category
+    const maxOrder =
+      categories.length > 0 ? Math.max(...categories.map((c) => c.display_order || 0)) + 10 : 10;
+    setCategoryForm({ name: '', displayOrder: maxOrder });
+    setCurrentCategoryId(null);
+    setCategoryResult(null);
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setCategoryMode('edit');
+    setCategoryForm({
+      name: category.name,
+      displayOrder: category.display_order || 0,
+    });
+    setCurrentCategoryId(category.id);
+    setCategoryResult(null);
+  };
+
+  const handleCancelCategoryEdit = () => {
+    setCategoryMode('view');
+    setCategoryForm({ name: '', displayOrder: 0 });
+    setCurrentCategoryId(null);
+    setCategoryResult(null);
+  };
+
+  const handleCategoryInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    if (name === 'displayOrder') {
+      setCategoryForm((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
+    } else {
+      setCategoryForm((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCategoryLoading(true);
+
+    try {
+      if (categoryMode === 'add') {
+        const result = await addCategory({
+          name: categoryForm.name,
+          displayOrder: categoryForm.displayOrder,
+        });
+
+        setCategoryResult(result);
+
+        if (result.success) {
+          // Reset form
+          setCategoryForm({ name: '', displayOrder: categories.length });
+          setCategoryMode('view');
+
+          // Refresh categories
+          await fetchCategories();
+        }
+      } else if (categoryMode === 'edit' && currentCategoryId) {
+        const result = await updateCategory(currentCategoryId, {
+          name: categoryForm.name,
+          displayOrder: categoryForm.displayOrder,
+        });
+
+        setCategoryResult(result);
+
+        if (result.success) {
+          // Reset form
+          setCategoryForm({ name: '', displayOrder: 0 });
+          setCurrentCategoryId(null);
+          setCategoryMode('view');
+
+          // Refresh categories
+          await fetchCategories();
+        }
+      }
+    } catch (error) {
+      setCategoryResult({ success: false, error: 'An unexpected error occurred' });
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this category? This cannot be undone.')) return;
+
+    try {
+      const result = await deleteCategory(id);
+
+      if (result.success) {
+        // Refresh categories
+        await fetchCategories();
+      } else {
+        alert(result.error || 'Failed to delete category');
+      }
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      alert('Failed to delete category. Please try again.');
+    }
+  };
+
+  const handleMoveCategoryUp = async (category: Category, index: number) => {
+    if (index === 0) return;
+
+    try {
+      // Get current sorted categories
+      const sortedCategories = [...categories].sort((a, b) => {
+        if (a.display_order !== undefined && b.display_order !== undefined) {
+          return a.display_order - b.display_order;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      // Find current and previous categories
+      const currentCategory = sortedCategories[index];
+      const previousCategory = sortedCategories[index - 1];
+
+      // Calculate new order between the previous category and the one before it (if exists)
+      let newOrder;
+      if (index > 1) {
+        const beforePrevious = sortedCategories[index - 2];
+        newOrder =
+          Math.floor((beforePrevious.display_order || 0) + (previousCategory.display_order || 0)) /
+          2;
+      } else {
+        // If it's moving to first position
+        newOrder = (previousCategory.display_order || 0) - 10;
+      }
+
+      await updateCategory(category.id, { displayOrder: newOrder });
+      await fetchCategories();
+    } catch (error) {
+      console.error('Failed to reorder category:', error);
+    }
+  };
+
+  const handleMoveCategoryDown = async (category: Category, index: number) => {
+    if (index === categories.length - 1) return;
+
+    try {
+      // Get current sorted categories
+      const sortedCategories = [...categories].sort((a, b) => {
+        if (a.display_order !== undefined && b.display_order !== undefined) {
+          return a.display_order - b.display_order;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      // Find current and next categories
+      const currentCategory = sortedCategories[index];
+      const nextCategory = sortedCategories[index + 1];
+
+      // Calculate new order between the next category and the one after it (if exists)
+      let newOrder;
+      if (index < sortedCategories.length - 2) {
+        const afterNext = sortedCategories[index + 2];
+        newOrder =
+          Math.floor((nextCategory.display_order || 0) + (afterNext.display_order || 0)) / 2;
+      } else {
+        // If it's moving to last position
+        newOrder = (nextCategory.display_order || 0) + 10;
+      }
+
+      await updateCategory(category.id, { displayOrder: newOrder });
+      await fetchCategories();
+    } catch (error) {
+      console.error('Failed to reorder category:', error);
     }
   };
 
@@ -123,7 +334,7 @@ export default function ProjectsTab() {
       title: project.title,
       description: project.description,
       color: project.color,
-      category: project.category,
+      categoryId: project.category.id,
       tags: project.tags.join(', '),
       githubUrl: project.githubUrl || '',
       demoUrl: project.demoUrl || '',
@@ -147,7 +358,7 @@ export default function ProjectsTab() {
       title: '',
       description: '',
       color: 'blue',
-      category: 'web',
+      categoryId: categories.length > 0 ? categories[0].id : 0,
       tags: '',
       githubUrl: '',
       demoUrl: '',
@@ -155,8 +366,6 @@ export default function ProjectsTab() {
     setProjectImages([]);
     setCoverImage(null);
     setHasCoverImage(false);
-    setCustomCategory('');
-    setShowCustomInput(false);
     setMode('add');
 
     // Reset the image upload components
@@ -188,46 +397,16 @@ export default function ProjectsTab() {
     }
   };
 
-  // Fetch existing categories on component mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const fetchedCategories = await getCategories();
-        if (fetchedCategories && fetchedCategories.length > 0) {
-          setCategories(fetchedCategories);
-        }
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // Handle category change in the form
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === 'custom') {
-      setShowCustomInput(true);
-      // Don't change the form value yet, wait for custom input
-    } else {
-      setShowCustomInput(false);
-      setProjectForm((prev) => ({ ...prev, category: value }));
-    }
-  };
-
-  // Handle custom category input change
-  const handleCustomCategoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomCategory(e.target.value);
-    setProjectForm((prev) => ({ ...prev, category: e.target.value }));
-  };
-
-  // Handle input changes for other form fields
+  // Handle input changes for project form fields
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setProjectForm((prev) => ({ ...prev, [name]: value }));
+    if (name === 'categoryId') {
+      setProjectForm((prev) => ({ ...prev, [name]: parseInt(value) }));
+    } else {
+      setProjectForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   // Handle removing an image from the current project
@@ -266,20 +445,15 @@ export default function ProjectsTab() {
   async function handleProjectSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // If using custom category, check if it's not empty
-    if (showCustomInput && !customCategory.trim()) {
-      alert('Please enter a category name or select an existing one.');
+    // Validate category is selected
+    if (!projectForm.categoryId) {
+      alert('Please select a category.');
       return;
     }
 
     setProjectLoading(true);
 
     try {
-      // If using custom category, add it to categories first
-      if (showCustomInput && !categories.includes(customCategory)) {
-        await addCategory(customCategory);
-      }
-
       // Convert tags string to array
       const tagsArray = projectForm.tags
         .split(',')
@@ -292,14 +466,14 @@ export default function ProjectsTab() {
           title: projectForm.title,
           description: projectForm.description,
           color: projectForm.color,
-          category: showCustomInput ? customCategory : projectForm.category,
+          categoryId: projectForm.categoryId,
           tags: tagsArray,
           githubUrl: projectForm.githubUrl || undefined,
           demoUrl: projectForm.demoUrl || undefined,
           newImages: projectImages.length > 0 ? projectImages : undefined,
           removedImageIds: removedImageIds.length > 0 ? removedImageIds : undefined,
-          // Always pass the cover image state - null means remove, new object means update
-          coverImage: coverImage,
+          // Only include coverImage if it has changed (new image added or explicitly removed)
+          coverImage: hasCoverImage === false ? null : coverImage || undefined,
         };
 
         const result = await updateProject(parseInt(currentProjectId!, 10), updateData);
@@ -323,7 +497,7 @@ export default function ProjectsTab() {
           title: projectForm.title,
           description: projectForm.description,
           color: projectForm.color,
-          category: showCustomInput ? customCategory : projectForm.category,
+          categoryId: projectForm.categoryId,
           tags: tagsArray,
           images: projectImages,
           githubUrl: projectForm.githubUrl || undefined,
@@ -339,7 +513,7 @@ export default function ProjectsTab() {
             title: '',
             description: '',
             color: 'blue',
-            category: 'web',
+            categoryId: categories.length > 0 ? categories[0].id : 0,
             tags: '',
             githubUrl: '',
             demoUrl: '',
@@ -347,8 +521,6 @@ export default function ProjectsTab() {
           setProjectImages([]);
           setCoverImage(null);
           setHasCoverImage(false);
-          setCustomCategory('');
-          setShowCustomInput(false);
 
           // Reset the image upload components
           if (coverImageUploadRef.current) coverImageUploadRef.current.reset();
@@ -356,12 +528,6 @@ export default function ProjectsTab() {
 
           // Refresh projects list
           fetchProjects();
-
-          // If a new category was added, refresh the categories list
-          if (showCustomInput && !categories.includes(customCategory)) {
-            const updatedCategories = await getCategories();
-            setCategories(updatedCategories);
-          }
         }
       }
     } catch (error) {
@@ -376,7 +542,7 @@ export default function ProjectsTab() {
     (project) =>
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -411,7 +577,7 @@ export default function ProjectsTab() {
       const results = await Promise.all(selectedProjects.map((id) => deleteProject(Number(id))));
 
       // Check if all deletions were successful
-      const allSuccess = results.every((result) => result);
+      const allSuccess = results.every((result) => result.success);
 
       if (allSuccess) {
         // Refresh projects list
@@ -442,6 +608,142 @@ export default function ProjectsTab() {
       <h2 className="text-2xl font-bold mb-6">
         {mode === 'add' ? 'Add New Project' : 'Edit Project'}
       </h2>
+
+      {/* Category Manager Toggle */}
+      <button
+        onClick={() => setShowCategoryManager(!showCategoryManager)}
+        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+      >
+        {showCategoryManager ? 'Hide Category Manager' : 'Manage Categories'}
+      </button>
+
+      {/* Category Manager */}
+      {showCategoryManager && (
+        <div className="mb-8 p-4 border border-gray-300/30 rounded-lg">
+          <h3 className="text-xl font-bold mb-4">Category Manager</h3>
+
+          {categoryMode !== 'view' && (
+            <form onSubmit={handleCategorySubmit} className="mb-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="categoryName">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  id="categoryName"
+                  name="name"
+                  placeholder="e.g., web, mobile, data science"
+                  value={categoryForm.name}
+                  onChange={handleCategoryInputChange}
+                  className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1" htmlFor="displayOrder">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  id="displayOrder"
+                  name="displayOrder"
+                  min="0"
+                  value={categoryForm.displayOrder}
+                  onChange={handleCategoryInputChange}
+                  className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">Lower numbers are displayed first</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={categoryLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {categoryLoading
+                    ? categoryMode === 'add'
+                      ? 'Adding...'
+                      : 'Updating...'
+                    : categoryMode === 'add'
+                    ? 'Add Category'
+                    : 'Update Category'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCancelCategoryEdit}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {categoryMode === 'view' && (
+            <button
+              onClick={handleAddCategory}
+              className="mb-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Add New Category
+            </button>
+          )}
+
+          {categoryResult && (
+            <div
+              className={`mt-4 p-4 rounded-lg ${
+                categoryResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}
+            >
+              {categoryResult.success
+                ? 'Category operation completed successfully!'
+                : `Error: ${categoryResult.error}`}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <h4 className="text-lg font-semibold mb-2">Existing Categories</h4>
+            {categories.length === 0 ? (
+              <p>No categories found.</p>
+            ) : (
+              <ul className="space-y-2">
+                {[...categories]
+                  .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                  .map((category, index) => (
+                    <li
+                      key={category.id}
+                      className="flex items-center justify-between p-3 bg-white/5 border border-gray-300/30 rounded-md"
+                    >
+                      <div className="flex items-center">
+                        <span className="mr-2 text-gray-400">#{index + 1}</span>
+                        <span className="font-medium">{category.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditCategory(category)}
+                          className="p-1 text-blue-500 hover:text-blue-700"
+                          title="Edit category"
+                        >
+                          <Pen size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="p-1 text-red-500 hover:text-red-700"
+                          title="Delete category"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleProjectSubmit} className="space-y-4">
         <div>
@@ -502,39 +804,24 @@ export default function ProjectsTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="category">
+            <label className="block text-sm font-medium mb-1" htmlFor="categoryId">
               Category
             </label>
-            <div className="relative">
-              <select
-                id="category"
-                name="category"
-                value={showCustomInput ? 'custom' : projectForm.category}
-                onChange={handleCategoryChange}
-                className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </option>
-                ))}
-                <option value="custom">Add Custom Category...</option>
-              </select>
-            </div>
-
-            {showCustomInput && (
-              <div className="mt-2">
-                <input
-                  type="text"
-                  value={customCategory}
-                  onChange={handleCustomCategoryChange}
-                  placeholder="Enter new category name"
-                  className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            )}
+            <select
+              id="categoryId"
+              name="categoryId"
+              value={projectForm.categoryId}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 bg-white/5 border border-gray-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select a category</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name.charAt(0).toUpperCase() + cat.name.slice(1)}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -713,7 +1000,7 @@ export default function ProjectsTab() {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 mt-12">
         <h2 className="text-2xl font-bold">Existing Projects</h2>
 
         {projects.length > 0 && selectedProjects.length > 0 && (
@@ -774,7 +1061,7 @@ export default function ProjectsTab() {
       )}
 
       {/* Projects listing section */}
-      <div className="mt-12">
+      <div>
         {isLoading ? (
           <p className="text-center py-4">Loading projects...</p>
         ) : projects.length === 0 ? (
@@ -802,7 +1089,7 @@ export default function ProjectsTab() {
                     </p>
                     <div className="flex gap-2 mt-2">
                       <span className="px-2 py-1 bg-yellow-400 text-xs rounded-full">
-                        {project.category}
+                        {project.category.name}
                       </span>
                       {project.tags.slice(0, 3).map((tag) => (
                         <span key={tag} className="px-2 py-1 bg-yellow-400 text-xs rounded-full">

@@ -1,5 +1,6 @@
 'use server';
 
+import { Category, Project } from '@/types/project';
 import { getNeonClient } from './db';
 import { revalidatePath } from 'next/cache';
 
@@ -61,6 +62,15 @@ export async function getProjects() {
   try {
     const sql = getNeonClient();
 
+    // Create Category table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        display_order INT NOT NULL DEFAULT 0
+      )
+    `;
+
     // Create tables if they don't exist
     await sql`
       CREATE TABLE IF NOT EXISTS projects (
@@ -68,9 +78,10 @@ export async function getProjects() {
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         color VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL,
+        category_id INT NOT NULL,
         github_url TEXT,
-        demo_url TEXT
+        demo_url TEXT,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     `;
 
@@ -84,6 +95,48 @@ export async function getProjects() {
         ) THEN
           ALTER TABLE projects ADD COLUMN cover_image BYTEA;
           ALTER TABLE projects ADD COLUMN cover_image_type VARCHAR(50);
+        END IF;
+      END $$;
+    `;
+
+    // Add category_id column and migrate data if needed
+    await sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'projects' AND column_name = 'category'
+        ) AND NOT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'projects' AND column_name = 'category_id'
+        ) THEN
+          -- Temporarily add category_id column
+          ALTER TABLE projects ADD COLUMN category_id INT;
+          
+          -- For each distinct category in projects, add a category record if it doesn't exist
+          INSERT INTO categories (name, display_order)
+          SELECT DISTINCT category, 0 FROM projects
+          ON CONFLICT (name) DO NOTHING;
+          
+          -- Update category_id based on category name
+          UPDATE projects p
+          SET category_id = c.id
+          FROM categories c
+          WHERE p.category = c.name;
+          
+          -- Make category_id NOT NULL and add foreign key
+          ALTER TABLE projects ALTER COLUMN category_id SET NOT NULL;
+          ALTER TABLE projects ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES categories(id);
+          
+          -- Drop the old category column
+          ALTER TABLE projects DROP COLUMN category;
+        ELSIF NOT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_name = 'projects' AND column_name = 'category_id'
+        ) THEN
+          -- If no category column exists either, add category_id directly
+          ALTER TABLE projects ADD COLUMN category_id INT NOT NULL DEFAULT 1;
+          ALTER TABLE projects ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES categories(id);
         END IF;
       END $$;
     `;
@@ -110,7 +163,10 @@ export async function getProjects() {
     `;
 
     const projects =
-      await sql`SELECT id, title, description, color, category, github_url, demo_url FROM projects`;
+      await sql`SELECT p.id, p.title, p.description, p.color, c.id as category_id, c.name as category_name, p.github_url, p.demo_url 
+               FROM projects p
+               JOIN categories c ON p.category_id = c.id
+               ORDER BY c.display_order, p.title`;
 
     // For each project, get its tags and images
     const projectsWithDetails = await Promise.all(
@@ -147,7 +203,10 @@ export async function getProjects() {
           title: project.title,
           description: project.description,
           color: project.color,
-          category: project.category,
+          category: {
+            id: project.category_id,
+            name: project.category_name,
+          },
           githubUrl: project.github_url,
           demoUrl: project.demo_url,
           tags: tags.map((tagItem) => tagItem.tag),
@@ -157,7 +216,7 @@ export async function getProjects() {
         };
       })
     );
-    return projectsWithDetails;
+    return projectsWithDetails as Project[];
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw new Error('Failed to fetch projects');
@@ -169,7 +228,7 @@ export async function addProject(formData: {
   title: string;
   description: string;
   color: string;
-  category: string;
+  categoryId: number;
   tags: string[];
   images: { data: ArrayBuffer; type: string }[];
   githubUrl?: string;
@@ -178,17 +237,17 @@ export async function addProject(formData: {
 }) {
   try {
     const sql = getNeonClient();
-    const { title, description, color, category, tags, images, githubUrl, demoUrl, coverImage } =
+    const { title, description, color, categoryId, tags, images, githubUrl, demoUrl, coverImage } =
       formData;
 
     // Insert the project with the new fields, including cover image if provided
     const insertedProject = await sql`
       INSERT INTO projects (
-        title, description, color, category, github_url, demo_url,
+        title, description, color, category_id, github_url, demo_url,
         cover_image, cover_image_type
       ) 
       VALUES (
-        ${title}, ${description}, ${color}, ${category}, 
+        ${title}, ${description}, ${color}, ${categoryId}, 
         ${githubUrl || null}, ${demoUrl || null},
         ${coverImage ? Buffer.from(coverImage.data) : null},
         ${coverImage ? coverImage.type : null}
@@ -284,12 +343,22 @@ export async function seedDatabase(reset = false) {
       await sql`DROP TABLE IF EXISTS project_images CASCADE`;
       await sql`DROP TABLE IF EXISTS project_tags CASCADE`;
       await sql`DROP TABLE IF EXISTS projects CASCADE`;
+      await sql`DROP TABLE IF EXISTS categories CASCADE`;
       await sql`DROP TABLE IF EXISTS skills CASCADE`;
       await sql`DROP TABLE IF EXISTS about_content CASCADE`;
       await sql`DROP TABLE IF EXISTS contact_info CASCADE`;
       await sql`DROP TABLE IF EXISTS social_links CASCADE`;
       await sql`DROP TABLE IF EXISTS resume CASCADE`;
     }
+
+    // Create categories table
+    await sql`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        display_order INT NOT NULL DEFAULT 0
+      )
+    `;
 
     // Create tables
     await sql`
@@ -314,9 +383,12 @@ export async function seedDatabase(reset = false) {
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         color VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL,
+        category_id INT NOT NULL,
         github_url TEXT,
-        demo_url TEXT
+        demo_url TEXT,
+        cover_image BYTEA,
+        cover_image_type VARCHAR(50),
+        FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     `;
 
@@ -364,6 +436,15 @@ export async function seedDatabase(reset = false) {
         url VARCHAR(255) NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+
+    // Insert default categories
+    await sql`
+      INSERT INTO categories (name, display_order)
+      VALUES 
+        ('web', 0),
+        ('mobile', 1),
+      ON CONFLICT (name) DO NOTHING
     `;
 
     // Check if we already have data
@@ -422,8 +503,12 @@ export async function seedDatabase(reset = false) {
       await sql`INSERT INTO resume (url) VALUES (${resumeUrl})`;
     }
 
-    // Insert projects and their tags if they don't exist
+    // Insert projects if they don't exist
     if (parseInt(projectCount[0].count) === 0) {
+      // Get category IDs
+      const categoryMobile = await sql`SELECT id FROM categories WHERE name = 'mobile'`;
+      const mobileId = categoryMobile[0]?.id || 1;
+
       // Projects data
       const projects = [
         {
@@ -431,7 +516,7 @@ export async function seedDatabase(reset = false) {
           description:
             'A native mobile shopping platform with personalized recommendations and AR try-on features.',
           color: 'blue',
-          category: 'mobile',
+          categoryId: mobileId,
           tags: ['React Native', 'Redux', 'Firebase'],
           images: [
             'https://images.unsplash.com/photo-1563013544-824ae1b704d3?q=80&w=800&auto=format',
@@ -447,9 +532,9 @@ export async function seedDatabase(reset = false) {
       for (const project of projects) {
         // Insert the project with GitHub and demo URLs
         const insertedProject = await sql`
-          INSERT INTO projects (title, description, color, category, github_url, demo_url) 
+          INSERT INTO projects (title, description, color, category_id, github_url, demo_url) 
           VALUES (${project.title}, ${project.description}, ${project.color}, ${
-          project.category
+          project.categoryId
         }, ${project.githubUrl || null}, ${project.demoUrl || null})
           RETURNING id
         `;
@@ -537,57 +622,149 @@ export async function getCoverImage(projectId: string) {
   }
 }
 
-// Get all unique categories
-export async function getCategories(): Promise<string[]> {
+// Get all categories with ordering
+export async function getCategories() {
   try {
     const sql = getNeonClient();
 
-    // Create the projects table if it doesn't exist
+    // Create the categories table if it doesn't exist
     await sql`
-      CREATE TABLE IF NOT EXISTS projects (
+      CREATE TABLE IF NOT EXISTS categories (
         id SERIAL PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        description TEXT NOT NULL,
-        color VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL,
-        github_url TEXT,
-        demo_url TEXT
+        name VARCHAR(50) NOT NULL UNIQUE,
+        display_order INT NOT NULL DEFAULT 0
       )
     `;
 
-    // Get all unique categories from projects table
-    const result = await sql`
-      SELECT DISTINCT category FROM projects ORDER BY category
+    // Ensure we have at least one default category
+    await sql`
+      INSERT INTO categories (name, display_order)
+      VALUES ('web', 0), ('mobile', 1)
+      ON CONFLICT (name) DO NOTHING
     `;
 
-    // If no categories exist yet, return default ones
-    if (result.length === 0) {
-      return ['web', 'mobile', 'misc'];
-    }
+    // Get all categories ordered by display_order
+    const result = await sql`
+      SELECT id, name, display_order FROM categories ORDER BY display_order, name
+    `;
 
-    return result.map((row) => row.category);
+    return result as Category[];
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return ['web', 'mobile', 'misc']; // Return defaults on error
+    // Return default categories as fallback
+    return [
+      { id: 0, name: 'web', display_order: 0 },
+      { id: 0, name: 'mobile', display_order: 1 },
+      { id: 0, name: 'mobile', display_order: 1 },
+    ];
   }
 }
 
-// Add a new category (this is just for tracking, as categories are stored with projects)
-export async function addCategory(category: string): Promise<{ success: boolean; error?: string }> {
+// Add a new category
+export async function addCategory(categoryData: {
+  name: string;
+  displayOrder?: number;
+}): Promise<{ success: boolean; id?: number; error?: string }> {
   try {
-    // Since categories are stored with projects, we just need to validate
-    if (!category || category.trim().length === 0) {
+    const sql = getNeonClient();
+    const { name, displayOrder = 0 } = categoryData;
+
+    // Validate input
+    if (!name || name.trim().length === 0) {
       return { success: false, error: 'Category name cannot be empty' };
     }
 
-    if (category.length > 50) {
+    if (name.length > 50) {
       return { success: false, error: 'Category name cannot exceed 50 characters' };
     }
 
-    return { success: true };
+    // Add the new category
+    const result = await sql`
+      INSERT INTO categories (name, display_order)
+      VALUES (${name.toLowerCase()}, ${displayOrder})
+      RETURNING id
+    `;
+
+    // Revalidate paths that display categories
+    revalidatePath('/projects');
+    revalidatePath('/admin');
+
+    return { success: true, id: result[0].id };
   } catch (error) {
     console.error('Error adding category:', error);
     return { success: false, error: 'Failed to add category' };
+  }
+}
+
+// Update category
+export async function updateCategory(
+  id: number,
+  categoryData: {
+    name?: string;
+    displayOrder?: number;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+    const { name, displayOrder } = categoryData;
+
+    if (name) {
+      // Update name if provided
+      await sql`
+        UPDATE categories
+        SET name = ${name.toLowerCase()}
+        WHERE id = ${id}
+      `;
+    }
+
+    if (displayOrder !== undefined) {
+      // Update display order if provided
+      await sql`
+        UPDATE categories
+        SET display_order = ${displayOrder}
+        WHERE id = ${id}
+      `;
+    }
+
+    // Revalidate paths that display categories
+    revalidatePath('/projects');
+    revalidatePath('/admin');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating category:', error);
+    return { success: false, error: 'Failed to update category' };
+  }
+}
+
+// Delete category
+export async function deleteCategory(id: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+
+    // Check if category is in use
+    const projectsUsingCategory = await sql`
+      SELECT COUNT(*) FROM projects WHERE category_id = ${id}
+    `;
+
+    if (parseInt(projectsUsingCategory[0].count) > 0) {
+      return {
+        success: false,
+        error: 'Cannot delete category that is being used by projects. Reassign projects first.',
+      };
+    }
+
+    // Delete the category
+    await sql`DELETE FROM categories WHERE id = ${id}`;
+
+    // Revalidate paths that display categories
+    revalidatePath('/projects');
+    revalidatePath('/admin');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return { success: false, error: 'Failed to delete category' };
   }
 }
 
@@ -746,7 +923,11 @@ export async function getAdminProjects() {
   try {
     const sql = getNeonClient();
 
-    const projects = await sql`SELECT * FROM projects`;
+    const projects = await sql`
+      SELECT p.*, c.name as category_name 
+      FROM projects p
+      JOIN categories c ON p.category_id = c.id
+    `;
 
     // For each project, get its tags
     const projectsWithTags = await Promise.all(
@@ -761,6 +942,10 @@ export async function getAdminProjects() {
 
         return {
           ...project,
+          category: {
+            id: project.category_id,
+            name: project.category_name,
+          },
           tags: tags.map((tagItem) => tagItem.tag),
           imageCount: parseInt(imageCount[0].count),
         };
@@ -830,14 +1015,14 @@ export async function getProjectForEdit(id: number) {
   }
 }
 
-// Update a project - simplified version
+// Update a project - modified for category_id
 export async function updateProject(
   id: number,
   formData: {
     title: string;
     description: string;
     color: string;
-    category: string;
+    categoryId: number;
     tags: string[];
     githubUrl?: string;
     demoUrl?: string;
@@ -852,7 +1037,7 @@ export async function updateProject(
       title,
       description,
       color,
-      category,
+      categoryId,
       tags,
       githubUrl,
       demoUrl,
@@ -870,7 +1055,7 @@ export async function updateProject(
           title = ${title}, 
           description = ${description}, 
           color = ${color}, 
-          category = ${category},
+          category_id = ${categoryId},
           github_url = ${githubUrl || null},
           demo_url = ${demoUrl || null},
           cover_image = NULL,
@@ -885,7 +1070,7 @@ export async function updateProject(
           title = ${title}, 
           description = ${description}, 
           color = ${color}, 
-          category = ${category},
+          category_id = ${categoryId},
           github_url = ${githubUrl || null},
           demo_url = ${demoUrl || null},
           cover_image = ${Buffer.from(coverImage.data)},
@@ -900,7 +1085,7 @@ export async function updateProject(
           title = ${title}, 
           description = ${description}, 
           color = ${color}, 
-          category = ${category},
+          category_id = ${categoryId},
           github_url = ${githubUrl || null},
           demo_url = ${demoUrl || null}
         WHERE id = ${id}
