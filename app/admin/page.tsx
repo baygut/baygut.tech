@@ -8,6 +8,7 @@ import ProjectsTab from '@/components/admin/ProjectsTab';
 import SkillsTab from '@/components/admin/SkillsTab';
 import GeneralSettingsTab from '@/components/admin/GeneralSettingsTab';
 import BlogTab from '@/components/admin/BlogTab';
+import HeroTab from '@/components/admin/HeroTab';
 
 export default function AdminPage() {
   // Tab state
@@ -26,6 +27,7 @@ export default function AdminPage() {
 
       {/* Tab Content */}
       {activeTab === 'general' && <GeneralSettingsTab />}
+      {activeTab === 'hero' && <HeroTab />}
       {activeTab === 'projects' && <ProjectsTab />}
       {activeTab === 'skills' && <SkillsTab />}
       {activeTab === 'blog' && <BlogTab />}

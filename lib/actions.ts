@@ -4,6 +4,84 @@ import { Category, Project } from '@/types/project';
 import { getNeonClient } from './db';
 import { revalidatePath } from 'next/cache';
 
+// Hero content actions
+/**
+ * Fetches hero section content from the database.
+ * Creates the hero_content table if it doesn't exist.
+ * @returns Object with name and title, or default values if no data exists
+ */
+export async function getHeroContent() {
+  try {
+    const sql = getNeonClient();
+
+    // Create table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS hero_content (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL
+      )
+    `;
+
+    const heroContent = await sql`SELECT * FROM hero_content LIMIT 1`;
+
+    // If no hero content in database, return default values
+    if (heroContent.length === 0) {
+      return {
+        name: 'Berkay Baygut',
+        title: 'Software Developer',
+      };
+    }
+
+    return {
+      name: heroContent[0].name,
+      title: heroContent[0].title,
+    };
+  } catch (error) {
+    console.error('Error fetching hero content:', error);
+    throw new Error('Failed to fetch hero content');
+  }
+}
+
+/**
+ * Updates hero section content in the database.
+ * Performs an upsert operation (update if exists, insert if not).
+ * Revalidates the homepage after successful update.
+ * @param data Object containing name and title strings
+ * @returns Object with success boolean and optional error message
+ */
+export async function updateHeroContent(data: { name: string; title: string }) {
+  try {
+    const sql = getNeonClient();
+
+    // Check if hero content already exists
+    const existing = await sql`SELECT id FROM hero_content LIMIT 1`;
+
+    if (existing.length > 0) {
+      // Update existing record
+      await sql`
+        UPDATE hero_content 
+        SET name = ${data.name}, title = ${data.title}
+        WHERE id = ${existing[0].id}
+      `;
+    } else {
+      // Insert new record
+      await sql`
+        INSERT INTO hero_content (name, title)
+        VALUES (${data.name}, ${data.title})
+      `;
+    }
+
+    // Revalidate the homepage to show the updated content
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating hero content:', error);
+    return { success: false, error: 'Failed to update hero content' };
+  }
+}
+
 // Skills actions
 export async function getSkills() {
   try {

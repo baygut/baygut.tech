@@ -10,6 +10,7 @@ interface TabNavigationProps {
 const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'general', label: 'General Settings' },
+    { id: 'hero', label: 'Hero Section' },
     { id: 'projects', label: 'Projects' },
     { id: 'skills', label: 'Skills' },
     { id: 'blog', label: 'Blog' },
