@@ -12,6 +12,7 @@ import {
   getContactInfo,
   getProjects,
   getSkills,
+  getHeroContent,
 } from '@/lib/actions';
 import { BlogPost, ContactItem, SocialLink } from '@/types/api';
 import { Project } from '@/types/project';
@@ -27,6 +28,12 @@ export default async function Home() {
     )
     .catch(() => []);
   const aboutContentFromDb = await getAboutContent().catch(() => []);
+
+  // Get hero content from database
+  const heroContentFromDb = await getHeroContent().catch(() => ({
+    name: 'Berkay Baygut',
+    title: 'Software Developer',
+  }));
 
   // Updated to check for tags instead of technologies
   const projectsFromDb = await getProjects()
@@ -90,7 +97,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       <div id="hero-section">
-        <HeroSection title="Berkay Baygut" subtitle="Software Developer" resumeUrl={resumeUrl} />
+        <HeroSection title={heroContentFromDb.name} subtitle={heroContentFromDb.title} resumeUrl={resumeUrl} />
       </div>
 
       <AboutSection content={aboutContent} />
