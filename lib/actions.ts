@@ -5,6 +5,11 @@ import { getNeonClient } from './db';
 import { revalidatePath } from 'next/cache';
 
 // Hero content actions
+/**
+ * Fetches hero section content from the database.
+ * Creates the hero_content table if it doesn't exist.
+ * @returns Object with name and title, or default values if no data exists
+ */
 export async function getHeroContent() {
   try {
     const sql = getNeonClient();
@@ -38,6 +43,13 @@ export async function getHeroContent() {
   }
 }
 
+/**
+ * Updates hero section content in the database.
+ * Performs an upsert operation (update if exists, insert if not).
+ * Revalidates the homepage after successful update.
+ * @param data Object containing name and title strings
+ * @returns Object with success boolean and optional error message
+ */
 export async function updateHeroContent(data: { name: string; title: string }) {
   try {
     const sql = getNeonClient();

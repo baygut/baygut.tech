@@ -34,7 +34,11 @@ export default function HeroTab() {
       const updateResult = await updateHeroContent(heroContent);
       setResult(updateResult);
     } catch (error) {
-      setResult({ success: false, error: 'An unexpected error occurred' });
+      console.error('Failed to update hero content:', error);
+      setResult({
+        success: false,
+        error: 'Failed to update hero content. Please try again or check the console for details.',
+      });
     } finally {
       setLoading(false);
     }
@@ -89,9 +93,7 @@ export default function HeroTab() {
                 result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}
             >
-              {result.success
-                ? 'Hero content updated successfully!'
-                : `Error: ${result.error}`}
+              {result.success ? 'Hero content updated successfully!' : `Error: ${result.error}`}
             </div>
           )}
         </form>
