@@ -47,7 +47,7 @@ const GlobalTooltip: React.FC = () => {
       ref={tooltipRef}
       className={`fixed ${positionClasses} ${widthClasses} bg-white border-2 border-black text-black font-normal rounded-lg px-4 py-4 pb-6 shadow-md z-[9999] transition-all duration-300`}
     >
-      <p className="text-xl font-mono line-clamp-6 whitespace-normal break-words">{message}</p>
+      <p className="text-xl font-mono whitespace-pre-line break-words">{message}</p>
       <div
         className={`absolute ${arrowClasses} w-4 h-4 bg-white border-r-2 border-b-2 border-black`}
       ></div>

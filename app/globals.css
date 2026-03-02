@@ -7,7 +7,7 @@
   --color-white: #ffffff;
   --color-black: #000000;
   --color-gray: #888888;
-  
+
   /* Accent Colors */
   --color-blue: #0050E8;
   --color-yellow: #FFD447;
@@ -18,7 +18,7 @@
   --color-indigo: #6610f2;
   --color-orange: #fd7e14;
   --color-teal: #20c997;
-  
+
   /* Functional Colors */
   --color-background: var(--color-white);
   --color-text: var(--color-black);
@@ -32,22 +32,28 @@
 
 /* Hide scrollbar for IE, Edge and Firefox */
 html {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
   overflow-x: hidden;
+  scroll-behavior: smooth;
+  scroll-padding-top: 75px;
 }
 
 body {
   color: var(--color-text);
   background: var(--color-background);
   font-family: var(--font-main);
-  overflow-x: hidden; /* Prevent horizontal scrolling */
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling */
   width: 100%;
 }
 
 main {
   width: 100%;
-  overflow-x: hidden; /* Ensure main content doesn't cause horizontal scroll */
+  overflow-x: hidden;
+  /* Ensure main content doesn't cause horizontal scroll */
   background-color: var(--color-white);
   color: var(--color-black);
 }
@@ -57,7 +63,12 @@ main {
   transform-style: preserve-3d;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading, var(--font-main));
   font-weight: 700;
   color: var(--color-black);
@@ -81,6 +92,7 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -93,18 +105,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Stagger the animations for nav buttons */
-.flex > a:nth-child(1) {
+.flex>a:nth-child(1) {
   animation-delay: 1.5s;
 }
 
-.flex > a:nth-child(2) {
+.flex>a:nth-child(2) {
   animation-delay: 1.7s;
 }
 
-.flex > a:nth-child(3) {
+.flex>a:nth-child(3) {
   animation-delay: 1.9s;
 }
 
-.flex > a:nth-child(4) {
+.flex>a:nth-child(4) {
   animation-delay: 2.1s;
 }

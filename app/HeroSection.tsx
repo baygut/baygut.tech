@@ -48,7 +48,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
         <p className="text-2xl md:text-3xl text-gray-700 max-w-2xl mb-2">{subtitle}</p>
         <NavButton href="#about">About</NavButton>
-        <NavButton href="#experience">Stack</NavButton>
+        <NavButton href="#experience-section">Career</NavButton>
         <NavButton href="#projects">My Work</NavButton>
         <NavButton href="#blog">Blog</NavButton>
         <NavButton href="#contact">Contact</NavButton>

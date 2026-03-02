@@ -1,11 +1,11 @@
 import AboutSection from '@/components/AboutSection';
+import { Suspense } from 'react';
 
 import ContactSection from '@/components/ContactSection';
 import ProjectsSection from '@/components/ProjectsSection';
 import SkillsSection, { Skill } from '@/components/SkillsSection';
 
 import FloatingModel3D from '@/components/FloatingModel3D';
-import ExperienceSection from '@/components/ExperienceSection';
 import {
   getAboutContent,
   getBlogPosts,
@@ -14,31 +14,30 @@ import {
   getProjects,
   getSkills,
   getHeroContent,
-  getExperienceFromResume,
 } from '@/lib/actions';
 import { BlogPost, ContactItem, SocialLink } from '@/types/api';
 import { Project } from '@/types/project';
 import HeroSection from './HeroSection';
 import BlogSection from '@/components/BlogSection';
+import ExperienceSectionServer from './ExperienceSectionServer';
 
 export default async function Home() {
-  const skillsFromDb = await getSkills()
+  const skillsPromise = getSkills()
     .then((data) =>
       Array.isArray(data) && data.every((item) => 'word' in item && 'desc' in item && 'id' in item)
         ? (data as Skill[]).sort((a, b) => a.id - b.id)
         : []
     )
     .catch(() => []);
-  const aboutContentFromDb = await getAboutContent().catch(() => []);
 
-  // Get hero content from database
-  const heroContentFromDb = await getHeroContent().catch(() => ({
+  const aboutContentPromise = getAboutContent().catch(() => []);
+
+  const heroContentPromise = getHeroContent().catch(() => ({
     name: 'Berkay Baygut',
     title: 'Software Developer',
   }));
 
-  // Updated to check for tags instead of technologies
-  const projectsFromDb = await getProjects()
+  const projectsPromise = getProjects()
     .then((data) =>
       Array.isArray(data) &&
       data.every(
@@ -47,23 +46,22 @@ export default async function Home() {
           'description' in item &&
           'color' in item &&
           'category' in item &&
-          'tags' in item // Changed from technologies to tags
+          'tags' in item
       )
         ? (data as Project[])
         : []
     )
     .catch(() => []);
 
-  const categoriesFromDb = await getCategories();
+  const categoriesPromise = getCategories().catch(() => []);
 
-  const contactInfoFromDb = await getContactInfo().catch(() => ({
+  const contactInfoPromise = getContactInfo().catch(() => ({
     contactItems: [],
     socialLinks: [],
     resumeUrl: null,
   }));
 
-  // Get blog posts from database
-  const blogPostsFromDb = await getBlogPosts()
+  const blogPostsPromise = getBlogPosts()
     .then((data) =>
       Array.isArray(data) &&
       data.every(
@@ -74,8 +72,23 @@ export default async function Home() {
     )
     .catch(() => []);
 
-  // Parse experience from resume PDF
-  const experiencesFromResume = await getExperienceFromResume().catch(() => []);
+  const [
+    skillsFromDb,
+    aboutContentFromDb,
+    heroContentFromDb,
+    projectsFromDb,
+    categoriesFromDb,
+    contactInfoFromDb,
+    blogPostsFromDb,
+  ] = await Promise.all([
+    skillsPromise,
+    aboutContentPromise,
+    heroContentPromise,
+    projectsPromise,
+    categoriesPromise,
+    contactInfoPromise,
+    blogPostsPromise,
+  ]);
 
   // Use data from database or fallback to hardcoded data
   const skills = skillsFromDb;
@@ -102,14 +115,20 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       <div id="hero-section">
-        <HeroSection title={heroContentFromDb.name} subtitle={heroContentFromDb.title} resumeUrl={resumeUrl} />
+        <HeroSection
+          title={heroContentFromDb.name}
+          subtitle={heroContentFromDb.title}
+          resumeUrl={resumeUrl}
+        />
       </div>
 
       <AboutSection content={aboutContent} />
 
       <SkillsSection skills={skills} />
 
-      <ExperienceSection experiences={experiencesFromResume} />
+      <Suspense fallback={null}>
+        <ExperienceSectionServer />
+      </Suspense>
 
       <ProjectsSection projects={projects} categories={categoriesFromDb} />
 

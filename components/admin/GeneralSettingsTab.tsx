@@ -6,6 +6,7 @@ import {
   getAboutContent,
   updateAboutContent,
   updateContactInfo,
+  clearExperienceCache,
 } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -441,6 +442,24 @@ export default function GeneralSettingsTab() {
             <p className="text-xs text-gray-400 mt-1">
               Enter the path to your resume file (e.g., /resume.pdf for a file in the public folder)
             </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Experience data is cached after the first parse. If you replaced the PDF at the same
+              URL, clear the cache below.
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await clearExperienceCache();
+                alert(
+                  res.success
+                    ? 'Experience cache cleared. It will re-parse on next visit.'
+                    : res.error
+                );
+              }}
+              className="mt-2 px-3 py-1.5 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md"
+            >
+              Clear Experience Cache
+            </button>
           </div>
 
           <button

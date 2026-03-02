@@ -984,6 +984,8 @@ export async function updateContactInfo({
     // Update resume URL
     if (resumeUrl) {
       await sql`INSERT INTO resume (url) VALUES (${resumeUrl})`;
+      // Invalidate experience cache — new URL will trigger a re-parse on next visit
+      await sql`DELETE FROM resume_experience_cache WHERE resume_url != ${resumeUrl}`;
     }
 
     // Revalidate paths that display contact info
@@ -1261,8 +1263,7 @@ function extractExperienceFromText(rawText: string): ExperienceEntry[] {
 
   // Locate the experience section header.
   // Matches: "WORK EXPERIENCE", "Work Experience", "Experience", "Work History", etc.
-  const expHeaderRe =
-    /^(professional\s+|work\s+|employment\s+)?(experience(s)?|history)$/i;
+  const expHeaderRe = /^(professional\s+|work\s+|employment\s+)?(experience(s)?|history)$/i;
   const endSectionRe =
     /^(education|skills?|certifications?|projects?|awards?|publications?|volunteer|references|interests?|languages?|summary|profile|objective|activities|accomplishments|organizations?)/i;
 
@@ -1348,22 +1349,66 @@ function extractExperienceFromText(rawText: string): ExperienceEntry[] {
 /**
  * Fetches the resume URL from the database, downloads the PDF,
  * parses it with pdf-parse, and returns structured experience entries.
+ *
+ * Results are cached in `resume_experience_cache` keyed by resume URL.
+ * Re-parsing only happens when the resume URL changes.
  */
 export async function getExperienceFromResume(): Promise<ExperienceEntry[]> {
   try {
     const sql = getNeonClient();
+
+    // Ensure cache table exists
+    await sql`
+      CREATE TABLE IF NOT EXISTS resume_experience_cache (
+        id         SERIAL PRIMARY KEY,
+        resume_url TEXT NOT NULL UNIQUE,
+        entries    JSONB NOT NULL,
+        cached_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
 
     const resumeRows = await sql`SELECT url FROM resume ORDER BY updated_at DESC LIMIT 1`;
     if (resumeRows.length === 0) return [];
 
     const resumeUrl: string = resumeRows[0].url;
 
+    // Return cached entries if the URL hasn't changed
+    const cached = await sql`
+      SELECT entries FROM resume_experience_cache
+      WHERE resume_url = ${resumeUrl}
+      LIMIT 1
+    `;
+    if (cached.length > 0) {
+      return cached[0].entries as ExperienceEntry[];
+    }
+
+    const normalizeResumeUrl = (url: string): string => {
+      try {
+        const parsed = new URL(url);
+        const isGoogleDriveHost =
+          parsed.hostname === 'drive.google.com' || parsed.hostname === 'docs.google.com';
+        if (!isGoogleDriveHost) return url;
+
+        const pathFileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+        const queryFileId = parsed.searchParams.get('id');
+        const fileId = pathFileMatch?.[1] ?? queryFileId;
+
+        if (!fileId) return url;
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+      } catch {
+        return url;
+      }
+    };
+
     let pdfBuffer: Buffer;
+    let resumeContentType: string | null = null;
 
     if (resumeUrl.startsWith('http://') || resumeUrl.startsWith('https://')) {
       // External URL
-      const res = await fetch(resumeUrl);
+      const normalizedResumeUrl = normalizeResumeUrl(resumeUrl);
+      const res = await fetch(normalizedResumeUrl);
       if (!res.ok) return [];
+      resumeContentType = res.headers.get('content-type');
       const arrayBuf = await res.arrayBuffer();
       pdfBuffer = Buffer.from(arrayBuf);
     } else {
@@ -1374,15 +1419,80 @@ export async function getExperienceFromResume(): Promise<ExperienceEntry[]> {
       pdfBuffer = await readFile(filePath);
     }
 
-    // pdf-parse uses CommonJS export=; dynamic require is the only compatible
-    // option when the TypeScript module target is ESNext.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
-    const pdfData = await pdfParse(pdfBuffer);
-    return extractExperienceFromText(pdfData.text);
+    const headerChunk = pdfBuffer.subarray(0, 1024).toString('latin1');
+    const hasPdfHeader = headerChunk.includes('%PDF-');
+    const hasPdfContentType = resumeContentType?.toLowerCase().includes('pdf') ?? false;
+    if (!hasPdfHeader && !hasPdfContentType) {
+      console.warn('Resume URL does not point to a valid PDF file:', resumeUrl);
+      return [];
+    }
+
+    const pdfParseModule = (await import('pdf-parse')) as unknown as {
+      PDFParse?: new (options: { data: Buffer }) => {
+        getText: () => Promise<{ text: string }>;
+        destroy?: () => Promise<void>;
+      };
+      default?: unknown;
+    };
+
+    if (pdfParseModule.PDFParse) {
+      const parser = new pdfParseModule.PDFParse({ data: pdfBuffer });
+      const pdfData = await parser.getText();
+      if (typeof parser.destroy === 'function') {
+        await parser.destroy();
+      }
+      const entries = extractExperienceFromText(pdfData.text);
+      await sql`
+        INSERT INTO resume_experience_cache (resume_url, entries)
+        VALUES (${resumeUrl}, ${JSON.stringify(entries)}::jsonb)
+        ON CONFLICT (resume_url) DO UPDATE SET entries = EXCLUDED.entries, cached_at = NOW()
+      `;
+      return entries;
+    }
+
+    const legacyPdfParse =
+      typeof pdfParseModule.default === 'function'
+        ? (pdfParseModule.default as (buf: Buffer) => Promise<{ text: string }>)
+        : undefined;
+    if (typeof legacyPdfParse === 'function') {
+      const pdfData = await legacyPdfParse(pdfBuffer);
+      const entries = extractExperienceFromText(pdfData.text);
+      await sql`
+        INSERT INTO resume_experience_cache (resume_url, entries)
+        VALUES (${resumeUrl}, ${JSON.stringify(entries)}::jsonb)
+        ON CONFLICT (resume_url) DO UPDATE SET entries = EXCLUDED.entries, cached_at = NOW()
+      `;
+      return entries;
+    }
+
+    throw new Error('Unsupported pdf-parse module export format');
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === 'InvalidPDFException' || /invalid pdf structure/i.test(error.message))
+    ) {
+      console.warn('Resume file is not a valid PDF structure, skipping extraction.');
+      return [];
+    }
+
     console.error('Error extracting experience from resume:', error);
     return [];
+  }
+}
+
+/**
+ * Clears the experience cache so the resume is fully re-parsed on the next visit.
+ * Useful from the admin dashboard after replacing a resume at the same URL.
+ */
+export async function clearExperienceCache(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sql = getNeonClient();
+    await sql`DELETE FROM resume_experience_cache`;
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing experience cache:', error);
+    return { success: false, error: 'Failed to clear experience cache' };
   }
 }
 

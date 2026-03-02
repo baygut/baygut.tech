@@ -1,11 +1,13 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 
 interface NavButtonProps {
   href: string;
   children: React.ReactNode;
 }
+
+const SCROLL_OFFSET = 75;
 
 export default function NavButton({ href, children }: NavButtonProps) {
   return (
@@ -14,7 +16,11 @@ export default function NavButton({ href, children }: NavButtonProps) {
       className="text-3xl opacity-40 hover:opacity-100 transition-opacity duration-300 ease-in-out"
       onClick={(e) => {
         e.preventDefault();
-        document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+        const target = document.querySelector(href);
+        if (!target) return;
+
+        const targetY = target.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
       }}
     >
       {children}

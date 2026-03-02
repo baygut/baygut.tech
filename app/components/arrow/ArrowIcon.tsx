@@ -1,6 +1,8 @@
-"use client";
-import React from "react";
-import { ArrowIconProps } from "./types";
+'use client';
+import React from 'react';
+import { ArrowIconProps } from './types';
+
+const SCROLL_OFFSET = 75;
 
 const ArrowIcon = ({ height = 32, className, href }: ArrowIconProps) => {
   return (
@@ -8,7 +10,11 @@ const ArrowIcon = ({ height = 32, className, href }: ArrowIconProps) => {
       href={href}
       onClick={(e) => {
         e.preventDefault();
-        document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+        const target = document.querySelector(href);
+        if (!target) return;
+
+        const targetY = target.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
       }}
       className={className}
       width={height / 2} // Adjusted proportion for better balance
