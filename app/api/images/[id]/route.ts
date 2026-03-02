@@ -8,14 +8,9 @@ export async function GET(
   const { id } = await params;
   const image = await getImage(id);
 
-  if (!image) {
+  if (!image?.url) {
     return new NextResponse('Image not found', { status: 404 });
   }
 
-  return new NextResponse(image.data, {
-    headers: {
-      'Content-Type': image.type,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-  });
+  return NextResponse.redirect(image.url, { status: 301 });
 }

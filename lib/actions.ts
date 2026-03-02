@@ -3,6 +3,7 @@
 import { Category, Project } from '@/types/project';
 import { getNeonClient } from './db';
 import { revalidatePath } from 'next/cache';
+import { put, del } from '@vercel/blob';
 
 // Hero content actions
 /**
@@ -233,7 +234,7 @@ export async function getProjects() {
       CREATE TABLE IF NOT EXISTS project_images (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        image_data BYTEA NOT NULL,
+        image_url TEXT,
         image_type VARCHAR(50) NOT NULL,
         position INT NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
@@ -254,27 +255,22 @@ export async function getProjects() {
         `;
 
         const images = await sql`
-          SELECT id, image_type FROM project_images 
+          SELECT id, image_url FROM project_images 
           WHERE project_id = ${project.id}
           ORDER BY position
         `;
 
-        // Convert to URLs that point to our API
-        const imageUrls = images.map((img) => `/api/images/${img.id}`);
+        // Use Vercel Blob URL directly if available; fall back to API route for legacy binary
+        const imageUrls = images.map((img) => img.image_url ?? `/api/images/${img.id}`);
 
-        // Check if the project has a cover image without fetching the actual binary data
-        const hasCoverImage = await sql`
-          SELECT EXISTS(
-            SELECT 1 FROM projects 
-            WHERE id = ${project.id} 
-            AND cover_image IS NOT NULL
-          ) as has_cover
+        // Check for cover image: prefer blob URL, fall back to legacy binary route
+        const coverRow = await sql`
+          SELECT cover_image_url, (cover_image IS NOT NULL) as has_cover
+          FROM projects WHERE id = ${project.id}
         `;
-
-        // Add cover image URL if exists
-        const coverImageUrl = hasCoverImage[0].has_cover
-          ? `/api/cover-image/${project.id}`
-          : undefined;
+        const coverImageUrl =
+          coverRow[0]?.cover_image_url ??
+          (coverRow[0]?.has_cover ? `/api/cover-image/${project.id}` : undefined);
 
         return {
           id: project.id,
@@ -318,17 +314,28 @@ export async function addProject(formData: {
     const { title, description, color, categoryId, tags, images, githubUrl, demoUrl, coverImage } =
       formData;
 
-    // Insert the project with the new fields, including cover image if provided
+    // Upload cover image to Vercel Blob
+    let coverBlobUrl: string | null = null;
+    if (coverImage) {
+      const ext = coverImage.type.split('/')[1] ?? 'jpg';
+      const { url } = await put(
+        `projects/cover-${Date.now()}.${ext}`,
+        Buffer.from(coverImage.data),
+        { access: 'public', contentType: coverImage.type }
+      );
+      coverBlobUrl = url;
+    }
+
+    // Insert the project
     const insertedProject = await sql`
       INSERT INTO projects (
         title, description, color, category_id, github_url, demo_url,
-        cover_image, cover_image_type
+        cover_image_url
       ) 
       VALUES (
         ${title}, ${description}, ${color}, ${categoryId}, 
         ${githubUrl || null}, ${demoUrl || null},
-        ${coverImage ? Buffer.from(coverImage.data) : null},
-        ${coverImage ? coverImage.type : null}
+        ${coverBlobUrl}
       )
       RETURNING id
     `;
@@ -343,12 +350,18 @@ export async function addProject(formData: {
       `;
     }
 
-    // Insert each image associated with the project
+    // Upload and insert each image to Vercel Blob
     for (let i = 0; i < images.length; i++) {
       const { data, type } = images[i];
+      const ext = type.split('/')[1] ?? 'jpg';
+      const { url } = await put(
+        `projects/${projectId}/img-${i}-${Date.now()}.${ext}`,
+        Buffer.from(data),
+        { access: 'public', contentType: type }
+      );
       await sql`
-        INSERT INTO project_images (project_id, image_data, image_type, position)
-        VALUES (${projectId}, ${Buffer.from(data)}, ${type}, ${i})
+        INSERT INTO project_images (project_id, image_url, image_type, position)
+        VALUES (${projectId}, ${url}, ${type}, ${i})
       `;
     }
 
@@ -483,7 +496,7 @@ export async function seedDatabase(reset = false) {
       CREATE TABLE IF NOT EXISTS project_images (
         id SERIAL PRIMARY KEY,
         project_id INT NOT NULL,
-        image_data BYTEA NOT NULL,
+        image_url TEXT,
         image_type VARCHAR(50) NOT NULL,
         position INT NOT NULL,
         FOREIGN KEY (project_id) REFERENCES projects(id)
@@ -627,13 +640,19 @@ export async function seedDatabase(reset = false) {
           `;
         }
 
-        // Fetch and insert each image
+        // Fetch and upload each image to Vercel Blob
         for (let i = 0; i < project.images.length; i++) {
           const imageBuffer = await getImageBufferFromUrl(project.images[i]);
           if (imageBuffer) {
+            const ext = imageBuffer.type.split('/')[1] ?? 'jpg';
+            const { url: imageUrl } = await put(
+              `projects/${projectId}/image-${i}.${ext}`,
+              Buffer.from(imageBuffer.data),
+              { access: 'public', contentType: imageBuffer.type }
+            );
             await sql`
-              INSERT INTO project_images (project_id, image_data, image_type, position)
-              VALUES (${projectId}, ${Buffer.from(imageBuffer.data)}, ${imageBuffer.type}, ${i})
+              INSERT INTO project_images (project_id, image_url, image_type, position)
+              VALUES (${projectId}, ${imageUrl}, ${imageBuffer.type}, ${i})
             `;
           }
         }
@@ -656,7 +675,7 @@ export async function getImage(id: string) {
     const sql = getNeonClient();
 
     const result = await sql`
-      SELECT image_data, image_type 
+      SELECT image_url, image_type 
       FROM project_images 
       WHERE id = ${id}
     `;
@@ -666,7 +685,7 @@ export async function getImage(id: string) {
     }
 
     return {
-      data: result[0].image_data,
+      url: result[0].image_url as string,
       type: result[0].image_type,
     };
   } catch (error) {
@@ -681,9 +700,10 @@ export async function getCoverImage(projectId: string) {
     const sql = getNeonClient();
 
     const result = await sql`
-      SELECT cover_image, cover_image_type 
+      SELECT cover_image_url, cover_image_type 
       FROM projects 
-      WHERE id = ${projectId} AND cover_image IS NOT NULL
+      WHERE id = ${projectId}
+        AND cover_image_url IS NOT NULL
     `;
 
     if (result.length === 0) {
@@ -691,7 +711,7 @@ export async function getCoverImage(projectId: string) {
     }
 
     return {
-      data: result[0].cover_image,
+      url: result[0].cover_image_url as string,
       type: result[0].cover_image_type,
     };
   } catch (error) {
@@ -1128,7 +1148,10 @@ export async function updateProject(
 
     // Handle cover image updates with a simple if/else
     if (coverImage === null) {
-      // Case 1: Explicitly set cover image to null (remove it)
+      // Case 1: Remove cover image — delete blob asset if present
+      const oldCover = await sql`SELECT cover_image_url FROM projects WHERE id = ${id}`;
+      if (oldCover[0]?.cover_image_url)
+        await del(oldCover[0].cover_image_url).catch(() => undefined);
       await sql`
         UPDATE projects 
         SET 
@@ -1138,12 +1161,20 @@ export async function updateProject(
           category_id = ${categoryId},
           github_url = ${githubUrl || null},
           demo_url = ${demoUrl || null},
-          cover_image = NULL,
-          cover_image_type = NULL
+          cover_image_url = NULL
         WHERE id = ${id}
       `;
     } else if (coverImage) {
-      // Case 2: Update with new cover image
+      // Case 2: New cover image — upload to Blob, delete old blob asset
+      const oldCover = await sql`SELECT cover_image_url FROM projects WHERE id = ${id}`;
+      if (oldCover[0]?.cover_image_url)
+        await del(oldCover[0].cover_image_url).catch(() => undefined);
+      const ext = coverImage.type.split('/')[1] ?? 'jpg';
+      const { url: newCoverUrl } = await put(
+        `projects/cover-${id}-${Date.now()}.${ext}`,
+        Buffer.from(coverImage.data),
+        { access: 'public', contentType: coverImage.type }
+      );
       await sql`
         UPDATE projects 
         SET 
@@ -1153,8 +1184,7 @@ export async function updateProject(
           category_id = ${categoryId},
           github_url = ${githubUrl || null},
           demo_url = ${demoUrl || null},
-          cover_image = ${Buffer.from(coverImage.data)},
-          cover_image_type = ${coverImage.type}
+          cover_image_url = ${newCoverUrl}
         WHERE id = ${id}
       `;
     } else {
@@ -1184,6 +1214,8 @@ export async function updateProject(
     // Delete removed images if any
     if (removedImageIds && removedImageIds.length > 0) {
       for (const imageId of removedImageIds) {
+        const blobRow = await sql`SELECT image_url FROM project_images WHERE id = ${imageId}`;
+        if (blobRow[0]?.image_url) await del(blobRow[0].image_url).catch(() => undefined);
         await sql`DELETE FROM project_images WHERE id = ${imageId}`;
       }
     }
@@ -1198,11 +1230,17 @@ export async function updateProject(
       `;
       let position = parseInt(positionResult[0].max_position) + 1;
 
-      // Insert each new image
+      // Upload each new image to Vercel Blob
       for (const { data, type } of newImages) {
+        const ext = type.split('/')[1] ?? 'jpg';
+        const { url: imgUrl } = await put(
+          `projects/${id}/img-${position}-${Date.now()}.${ext}`,
+          Buffer.from(data),
+          { access: 'public', contentType: type }
+        );
         await sql`
-          INSERT INTO project_images (project_id, image_data, image_type, position)
-          VALUES (${id}, ${Buffer.from(data)}, ${type}, ${position})
+          INSERT INTO project_images (project_id, image_url, image_type, position)
+          VALUES (${id}, ${imgUrl}, ${type}, ${position})
         `;
         position++;
       }

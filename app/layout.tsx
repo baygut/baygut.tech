@@ -3,6 +3,7 @@ import { Manrope, Sunflower } from 'next/font/google';
 import Script from 'next/script';
 import GlobalTooltip from './components/GlobalTooltip';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 
 // Setup fonts
 const mainFont = Manrope({
@@ -79,6 +80,7 @@ export default function RootLayout({
       <body>
         {children}
         <GlobalTooltip />
+        <Analytics />
       </body>
     </html>
   );
