@@ -5,6 +5,7 @@ import ProjectsSection from '@/components/ProjectsSection';
 import SkillsSection, { Skill } from '@/components/SkillsSection';
 
 import FloatingModel3D from '@/components/FloatingModel3D';
+import ExperienceSection from '@/components/ExperienceSection';
 import {
   getAboutContent,
   getBlogPosts,
@@ -13,6 +14,7 @@ import {
   getProjects,
   getSkills,
   getHeroContent,
+  getExperienceFromResume,
 } from '@/lib/actions';
 import { BlogPost, ContactItem, SocialLink } from '@/types/api';
 import { Project } from '@/types/project';
@@ -72,6 +74,9 @@ export default async function Home() {
     )
     .catch(() => []);
 
+  // Parse experience from resume PDF
+  const experiencesFromResume = await getExperienceFromResume().catch(() => []);
+
   // Use data from database or fallback to hardcoded data
   const skills = skillsFromDb;
   const aboutContent = aboutContentFromDb;
@@ -103,6 +108,8 @@ export default async function Home() {
       <AboutSection content={aboutContent} />
 
       <SkillsSection skills={skills} />
+
+      <ExperienceSection experiences={experiencesFromResume} />
 
       <ProjectsSection projects={projects} categories={categoriesFromDb} />
 

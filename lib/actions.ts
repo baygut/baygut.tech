@@ -1230,6 +1230,162 @@ async function getImageBufferFromUrl(url: string) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Experience actions – parse resume PDF and extract experience
+// ─────────────────────────────────────────────────────────────
+
+export interface ExperienceEntry {
+  company: string;
+  title: string;
+  period: string;
+  description: string[];
+}
+
+/**
+ * Parses the raw text of a PDF resume and extracts the work experience section.
+ *
+ * Expected job-entry line format (matching the actual resume):
+ *   Title, Company  MM/YYYY – MM/YYYY | Location
+ *
+ * The first comma splits title from company; the date range anchors the line.
+ * Bullet-point descriptions follow on subsequent lines until the next entry.
+ *
+ * Also handles word-month formats ("Jan 2020 – Present") for other resumes.
+ */
+function extractExperienceFromText(rawText: string): ExperienceEntry[] {
+  const lines = rawText
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  // Locate the experience section header.
+  // Matches: "WORK EXPERIENCE", "Work Experience", "Experience", "Work History", etc.
+  const expHeaderRe =
+    /^(professional\s+|work\s+|employment\s+)?(experience(s)?|history)$/i;
+  const endSectionRe =
+    /^(education|skills?|certifications?|projects?|awards?|publications?|volunteer|references|interests?|languages?|summary|profile|objective|activities|accomplishments|organizations?)/i;
+
+  const headerIdx = lines.findIndex((l) => expHeaderRe.test(l));
+  if (headerIdx === -1) return [];
+
+  let endIdx = lines.length;
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    if (endSectionRe.test(lines[i]) && lines[i].length < 50) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  const expLines = lines.slice(headerIdx + 1, endIdx);
+
+  // Date-range patterns:
+  //   Primary  – "MM/YYYY – MM/YYYY" or "MM/YYYY – Present"  (this resume)
+  //   Fallback – "Jan 2020 – Present", "2019 – 2022"          (other resumes)
+  const MONTH =
+    'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+  const dateRangeRe = new RegExp(
+    // MM/YYYY – MM/YYYY  or  MM/YYYY – Present
+    `\\d{1,2}\\/\\d{4}\\s*[-–—]\\s*(?:\\d{1,2}\\/\\d{4}|Present|Current)` +
+      // word-month year – word-month year / present
+      `|(?:(?:${MONTH})\\s+)?\\d{4}\\s*[-–—]\\s*(?:(?:${MONTH})\\s+)?\\d{4}` +
+      `|(?:${MONTH})\\s+\\d{4}\\s*[-–—]\\s*(?:Present|Current)`,
+    'i'
+  );
+
+  const entries: ExperienceEntry[] = [];
+
+  for (let i = 0; i < expLines.length; i++) {
+    const line = expLines[i];
+    const dateMatch = line.match(dateRangeRe);
+    if (!dateMatch) continue;
+
+    const period = dateMatch[0];
+
+    // Text before the date on this line: "Title, Company  " or "Title, Company"
+    const beforeDate = line
+      .substring(0, dateMatch.index)
+      .trim()
+      // Remove any trailing location separator "| City" that snuck in
+      .replace(/\s*\|.*$/, '')
+      .trim();
+
+    // Split at the FIRST comma: title = part[0], company = rest
+    const commaIdx = beforeDate.indexOf(',');
+    let title = '';
+    let company = '';
+    if (commaIdx !== -1) {
+      title = beforeDate.substring(0, commaIdx).trim();
+      company = beforeDate.substring(commaIdx + 1).trim();
+    } else {
+      // No comma found – treat whole string as company
+      company = beforeDate;
+    }
+
+    // Collect description lines that follow this entry line (until next date line)
+    const descLines: string[] = [];
+    let j = i + 1;
+    while (j < expLines.length) {
+      if (dateRangeRe.test(expLines[j])) break;
+      const cleaned = expLines[j].replace(/^[•·*>-]\s*/, '');
+      if (cleaned) descLines.push(cleaned);
+      j++;
+    }
+
+    if (company || title) {
+      entries.push({
+        company: company || title,
+        title: company ? title : '',
+        period,
+        description: descLines.slice(0, 5),
+      });
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Fetches the resume URL from the database, downloads the PDF,
+ * parses it with pdf-parse, and returns structured experience entries.
+ */
+export async function getExperienceFromResume(): Promise<ExperienceEntry[]> {
+  try {
+    const sql = getNeonClient();
+
+    const resumeRows = await sql`SELECT url FROM resume ORDER BY updated_at DESC LIMIT 1`;
+    if (resumeRows.length === 0) return [];
+
+    const resumeUrl: string = resumeRows[0].url;
+
+    let pdfBuffer: Buffer;
+
+    if (resumeUrl.startsWith('http://') || resumeUrl.startsWith('https://')) {
+      // External URL
+      const res = await fetch(resumeUrl);
+      if (!res.ok) return [];
+      const arrayBuf = await res.arrayBuffer();
+      pdfBuffer = Buffer.from(arrayBuf);
+    } else {
+      // Local file in the public directory
+      const { readFile } = await import('fs/promises');
+      const { join } = await import('path');
+      const filePath = join(process.cwd(), 'public', resumeUrl.replace(/^\//, ''));
+      pdfBuffer = await readFile(filePath);
+    }
+
+    // pdf-parse uses CommonJS export=; dynamic require is the only compatible
+    // option when the TypeScript module target is ESNext.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require('pdf-parse');
+    const pdfData = await pdfParse(pdfBuffer);
+    return extractExperienceFromText(pdfData.text);
+  } catch (error) {
+    console.error('Error extracting experience from resume:', error);
+    return [];
+  }
+}
+
 // Blog posts actions
 export async function getBlogPosts() {
   try {
