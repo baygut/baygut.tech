@@ -11,6 +11,20 @@ function stringToColors(str: string) {
   return { hue1, hue2 };
 }
 
+// Decode a bytea value from the DB into a Buffer.
+// postgres-js returns BYTEA as a hex-escaped string like "\x89504e47..."
+// when using a customType with driverData: string.
+function decodeByteaToBuffer(value: unknown): Buffer | null {
+  if (!value) return null;
+  if (value instanceof Buffer) return value;
+  if (typeof value === 'string') {
+    const hex = value.startsWith('\\x') ? value.slice(2) : value;
+    return Buffer.from(hex, 'hex');
+  }
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  return null;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params;
   const tool = await getToolBySlugRaw(slug);
@@ -19,14 +33,17 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  // If a binary image is explicitly set in BYTEA format
+  // If a binary image is explicitly set in BYTEA format, serve it directly
   if (tool.iconImage && tool.iconImageType) {
-    return new NextResponse(tool.iconImage as any, {
-      headers: {
-        'Content-Type': tool.iconImageType,
-        'Cache-Control': 'public, max-age=86400, immutable',
-      },
-    });
+    const buf = decodeByteaToBuffer(tool.iconImage);
+    if (buf) {
+      return new NextResponse(new Uint8Array(buf), {
+        headers: {
+          'Content-Type': tool.iconImageType,
+          'Cache-Control': 'public, max-age=86400, immutable',
+        },
+      });
+    }
   }
 
   const { hue1, hue2 } = stringToColors(tool.slug || tool.title);

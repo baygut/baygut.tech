@@ -26,6 +26,8 @@ export default async function EditToolPage({ params }: { params: Promise<{ slug:
         visibility: tool.visibility as 'public' | 'private' | 'password',
         password: tool.password || '',
         iconColor: tool.iconColor,
+        iconImageDataUrl: tool.iconImageDataUrl,
+        iconImageType: tool.iconImageType,
       }}
     />
   );

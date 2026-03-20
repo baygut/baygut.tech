@@ -108,19 +108,31 @@ export async function unlockTool(slug: string, passwordAttempt: string) {
   return false;
 }
 
+// postgres-js returns BYTEA columns as a hex-escaped string "\x89504e47..." when
+// using customType with driverData: string. Decode it to a real Buffer.
+function decodeByteaToBuffer(value: unknown): Buffer | null {
+  if (!value) return null;
+  if (value instanceof Buffer) return value;
+  if (typeof value === 'string') {
+    const hex = value.startsWith('\\x') ? value.slice(2) : value;
+    return Buffer.from(hex, 'hex');
+  }
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  return null;
+}
+
 // Convert a raw DB tool row into a plain-serializable shape safe for Client Components.
-// Uint8Array / Buffer cannot cross the server→client boundary; we convert to a
-// base64 data-URL (or null) instead.
 function serializeTool(tool: any) {
   const { iconImage, iconImageType, ...rest } = tool;
   let iconImageDataUrl: string | null = null;
+
   if (iconImage && iconImageType) {
-    const base64 =
-      iconImage instanceof Buffer
-        ? iconImage.toString('base64')
-        : Buffer.from(iconImage as Uint8Array).toString('base64');
-    iconImageDataUrl = `data:${iconImageType};base64,${base64}`;
+    const buf = decodeByteaToBuffer(iconImage);
+    if (buf) {
+      iconImageDataUrl = `data:${iconImageType};base64,${buf.toString('base64')}`;
+    }
   }
+
   return { ...rest, iconImageDataUrl, iconImageType: iconImageType ?? null };
 }
 
