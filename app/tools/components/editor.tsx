@@ -194,6 +194,11 @@ export function ToolEditor({
     }
   };
 
+  const handleClearHtml = () => {
+    if (!confirm('Clear all HTML in the editor?')) return;
+    setHtml('');
+  };
+
   // ── Icon Thumbnail (shared between desktop & mobile) ──────────────────────
   const IconThumb = () => (
     <div className="w-8 h-8 rounded-lg overflow-hidden border border-tools-border flex items-center justify-center bg-tools-surface font-bold text-white shadow-sm">
@@ -510,6 +515,28 @@ export function ToolEditor({
             </svg>
           </button>
 
+          {/* Clear HTML */}
+          <button
+            onClick={handleClearHtml}
+            aria-label="Clear HTML content"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium border border-orange-900/50 text-orange-400 hover:bg-orange-900/20 transition-colors"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M19 6l-1 14H6L5 6" />
+            </svg>
+          </button>
+
           {/* Delete */}
           {initialData && (
             <button
@@ -614,6 +641,13 @@ export function ToolEditor({
             className="px-3 py-1.5 text-sm font-medium border border-tools-border rounded hover:bg-tools-border transition-colors text-tools-muted hover:text-tools-fg"
           >
             {showPreview ? 'Hide Preview' : 'Show Preview'}
+          </button>
+          <button
+            onClick={handleClearHtml}
+            aria-label="Clear HTML content"
+            className="px-3 py-1.5 text-sm font-medium border border-orange-900/50 text-orange-400 rounded hover:bg-orange-900/20 transition-colors"
+          >
+            Clear
           </button>
           {initialData && (
             <button
