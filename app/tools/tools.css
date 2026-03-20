@@ -1,0 +1,17 @@
+/* app/tools/tools.css */
+.tools-layout {
+  --tools-bg: #0a0a0a;
+  --tools-surface: #141414;
+  --tools-border: #222228;
+  --tools-accent: #3b82f6; /* Electric Blue */
+  --tools-fg: #f0f0f0;
+  --tools-muted: #6b7280;
+  
+  font-family: var(--font-geist-sans), sans-serif;
+  background-color: var(--tools-bg);
+  color: var(--tools-fg);
+}
+
+.tools-layout .font-mono {
+  font-family: var(--font-geist-mono), monospace;
+}
