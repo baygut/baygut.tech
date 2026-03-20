@@ -50,6 +50,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         <NavButton href="#about">About</NavButton>
         <NavButton href="#experience">Stack</NavButton>
         <NavButton href="#projects">My Work</NavButton>
+        <NavButton href="#vibestore">VibeStore</NavButton>
         <NavButton href="#blog">Blog</NavButton>
         <NavButton href="#contact">Contact</NavButton>
 

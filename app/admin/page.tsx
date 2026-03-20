@@ -16,8 +16,10 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen h-full flex flex-col items-center justify-start p-4">
-      <div className="flex flex-row justify-between items-center w-full mb-8">
-        <a />
+      <div className="flex flex-row justify-between items-center w-full mb-8 max-w-4xl">
+        <a href="/tools" className="text-blue-600 hover:underline inline-flex items-center gap-2">
+          &larr; Tools Platform
+        </a>
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <LogoutButton />
       </div>

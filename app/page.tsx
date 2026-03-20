@@ -18,6 +18,8 @@ import { BlogPost, ContactItem, SocialLink } from '@/types/api';
 import { Project } from '@/types/project';
 import HeroSection from './HeroSection';
 import BlogSection from '@/components/BlogSection';
+import VibeStoreSection from '@/components/VibeStoreSection';
+import { getPublicTools } from '@/app/tools/actions';
 
 export default async function Home() {
   const skillsFromDb = await getSkills()
@@ -53,6 +55,9 @@ export default async function Home() {
     .catch(() => []);
 
   const categoriesFromDb = await getCategories();
+  
+  // Extract public tools for VibeStore
+  const publicTools = await getPublicTools().catch(() => []);
 
   const contactInfoFromDb = await getContactInfo().catch(() => ({
     contactItems: [],
@@ -105,6 +110,8 @@ export default async function Home() {
       <SkillsSection skills={skills} />
 
       <ProjectsSection projects={projects} categories={categoriesFromDb} />
+
+      <VibeStoreSection publicTools={publicTools} />
 
       <div id="blog">
         <BlogSection posts={blogPosts} />
