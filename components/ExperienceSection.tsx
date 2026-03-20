@@ -42,7 +42,7 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
   if (!experiences || n === 0) return null;
 
   return (
-    <section id="experience-section" className="bg-black py-20 md:py-28">
+    <section id="experience-section" className="bg-black py-20 md:py-28 max-md:px-12">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
@@ -50,14 +50,22 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.48 }}
-          className="mb-12 md:mb-16"
+          className="my-12 md:mb-16"
         >
           <p className="text-[11px] uppercase tracking-[0.22em] text-white/40 mb-2">Experience</p>
           <h2 className="text-4xl md:text-6xl font-bold text-white leading-none">
             Career <span className="text-[var(--color-yellow)]">Path</span>.
           </h2>
-          <div className="w-full h-px bg-white/10 mt-5" />
         </motion.div>
+
+        {/* Navigation */}
+        <NavControls
+          activeIndex={activeIndex}
+          total={n}
+          entries={experiences}
+          onPrev={goPrev}
+          onNext={goNext}
+        />
 
         {/* Timeline dots */}
         <div className="mb-10 md:mb-14">
@@ -73,15 +81,6 @@ export default function ExperienceSection({ experiences }: ExperienceSectionProp
             onSwipe={(dir) => (dir === 'left' ? goNext() : goPrev())}
           />
         </div>
-
-        {/* Navigation */}
-        <NavControls
-          activeIndex={activeIndex}
-          total={n}
-          entries={experiences}
-          onPrev={goPrev}
-          onNext={goNext}
-        />
       </div>
     </section>
   );
