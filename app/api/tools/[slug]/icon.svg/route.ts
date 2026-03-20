@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getToolBySlug } from '@/app/tools/actions';
+import { getToolBySlugRaw } from '@/app/tools/actions';
 
 function stringToColors(str: string) {
   let hash = 0;
@@ -13,7 +13,7 @@ function stringToColors(str: string) {
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params;
-  const tool = await getToolBySlug(slug);
+  const tool = await getToolBySlugRaw(slug);
 
   if (!tool) {
     return new NextResponse('Not Found', { status: 404 });

@@ -108,19 +108,44 @@ export async function unlockTool(slug: string, passwordAttempt: string) {
   return false;
 }
 
+// Convert a raw DB tool row into a plain-serializable shape safe for Client Components.
+// Uint8Array / Buffer cannot cross the server→client boundary; we convert to a
+// base64 data-URL (or null) instead.
+function serializeTool(tool: any) {
+  const { iconImage, iconImageType, ...rest } = tool;
+  let iconImageDataUrl: string | null = null;
+  if (iconImage && iconImageType) {
+    const base64 =
+      iconImage instanceof Buffer
+        ? iconImage.toString('base64')
+        : Buffer.from(iconImage as Uint8Array).toString('base64');
+    iconImageDataUrl = `data:${iconImageType};base64,${base64}`;
+  }
+  return { ...rest, iconImageDataUrl, iconImageType: iconImageType ?? null };
+}
+
 export async function getTools() {
-  return await db.select().from(tools).orderBy(desc(tools.createdAt));
+  const rows = await db.select().from(tools).orderBy(desc(tools.createdAt));
+  return rows.map(serializeTool);
 }
 
 export async function getPublicTools() {
-  return await db
+  const rows = await db
     .select()
     .from(tools)
     .where(eq(tools.visibility, 'public'))
     .orderBy(desc(tools.createdAt));
+  return rows.map(serializeTool);
+}
+
+// Raw (un-serialized) fetch — for internal server-side use only (e.g. icon API route).
+// Do NOT pass the result to Client Components.
+export async function getToolBySlugRaw(slug: string) {
+  const items = await db.select().from(tools).where(eq(tools.slug, slug)).limit(1);
+  return items[0] || null;
 }
 
 export async function getToolBySlug(slug: string) {
   const items = await db.select().from(tools).where(eq(tools.slug, slug)).limit(1);
-  return items[0] || null;
+  return items[0] ? serializeTool(items[0]) : null;
 }

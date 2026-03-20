@@ -1,12 +1,29 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Editor as MonacoEditor } from '@monaco-editor/react';
 import { motion } from 'framer-motion';
 import { ToastContainer, useToast } from './toast';
 import { saveToolBase, deleteToolAction } from '../actions';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/ImageUpload';
+
+// Dynamically import Monaco only on non-mobile
+import dynamic from 'next/dynamic';
+const MonacoEditor = dynamic(() => import('@monaco-editor/react').then((m) => m.Editor), {
+  ssr: false,
+});
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
 
 export function ToolEditor({
   initialData,
@@ -23,6 +40,7 @@ export function ToolEditor({
 }) {
   const router = useRouter();
   const { toasts, addToast } = useToast();
+  const isMobile = useIsMobile();
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [slug, setSlug] = useState(initialData?.slug || '');
@@ -151,7 +169,7 @@ export function ToolEditor({
   return (
     <div className="h-screen flex flex-col overflow-hidden text-tools-fg">
       {/* Top Bar */}
-      <div className="flex-none h-16 border-b border-tools-border bg-tools-surface flex items-center justify-between px-6 z-10">
+      <div className="flex-none min-h-16 border-b border-tools-border bg-tools-surface flex flex-wrap items-center justify-between px-4 md:px-6 gap-2 py-2 z-10">
         <div className="flex items-center gap-4 flex-1">
           <div className="text-tools-muted font-mono text-xs tracking-wider">
             <a href="/tools" className="hover:text-tools-fg transition-colors">
@@ -354,43 +372,76 @@ export function ToolEditor({
         </div>
       </div>
 
-      <div className="flex-1 flex min-h-0 relative">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex-1 min-h-0"
-          style={{ width: showPreview ? '60%' : '100%' }}
-        >
-          <MonacoEditor
-            height="100%"
-            language="html"
-            theme="vs-dark"
-            value={html}
-            onChange={(value) => setHtml(value || '')}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: 'var(--font-geist-mono), monospace',
-              padding: { top: 24, bottom: 24 },
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-            }}
-          />
-        </motion.div>
-
-        {showPreview && (
-          <div
-            className="flex-1 min-h-0 border-l border-tools-border bg-tools-bg relative"
-            style={{ maxWidth: '40%' }}
-          >
-            <iframe
-              title="preview"
-              srcDoc={html}
-              sandbox="allow-scripts allow-same-origin allow-forms"
-              className="absolute inset-0 w-full h-full bg-white"
+      <div className="flex-1 flex min-h-0 relative flex-col md:flex-row">
+        {isMobile ? (
+          /* ── Mobile: plain paste area ── */
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="px-4 py-2 bg-tools-surface border-b border-tools-border text-xs text-tools-muted flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+              Mobile mode — paste your HTML below
+            </div>
+            <textarea
+              value={html}
+              onChange={(e) => setHtml(e.target.value)}
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              placeholder="Paste your full HTML here..."
+              className="flex-1 w-full resize-none bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm p-4 focus:outline-none placeholder-[#555] leading-relaxed"
+              style={{ minHeight: '50vh' }}
             />
+            {showPreview && (
+              <div className="border-t border-tools-border" style={{ height: '40vh' }}>
+                <iframe
+                  title="preview"
+                  srcDoc={html}
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                  className="w-full h-full bg-white"
+                />
+              </div>
+            )}
           </div>
+        ) : (
+          /* ── Desktop: Monaco + side preview ── */
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex-1 min-h-0"
+              style={{ width: showPreview ? '60%' : '100%' }}
+            >
+              <MonacoEditor
+                height="100%"
+                language="html"
+                theme="vs-dark"
+                value={html}
+                onChange={(value) => setHtml(value || '')}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  fontFamily: 'var(--font-geist-mono), monospace',
+                  padding: { top: 24, bottom: 24 },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                }}
+              />
+            </motion.div>
+
+            {showPreview && (
+              <div
+                className="flex-1 min-h-0 border-l border-tools-border bg-tools-bg relative"
+                style={{ maxWidth: '40%' }}
+              >
+                <iframe
+                  title="preview"
+                  srcDoc={html}
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                  className="absolute inset-0 w-full h-full bg-white"
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
