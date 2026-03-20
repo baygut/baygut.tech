@@ -76,6 +76,7 @@ export async function saveToolBase(
     });
   }
 
+  revalidatePath('/');
   revalidatePath('/tools');
   revalidatePath(`/tools/${validSlug}`);
   return validSlug;
@@ -89,6 +90,7 @@ export async function deleteToolAction(slug: string) {
   }
 
   await db.delete(tools).where(eq(tools.slug, slug));
+  revalidatePath('/');
   revalidatePath('/tools');
 }
 
