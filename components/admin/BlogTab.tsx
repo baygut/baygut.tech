@@ -1,8 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addBlogPost, deleteBlogPost, getBlogPosts, updateBlogPost } from '@/lib/actions';
+import { addBlogPost, deleteBlogPost, getAdminBlogPosts, updateBlogPost } from '@/lib/actions';
 import { BlogPost } from '@/types/api';
+
+function isBlogPostRow(item: unknown): item is BlogPost {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    'id' in item &&
+    'title' in item &&
+    'slug' in item &&
+    'excerpt' in item &&
+    'content' in item &&
+    'published' in item
+  );
+}
 
 export default function BlogTab() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -24,19 +37,8 @@ export default function BlogTab() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const data = await getBlogPosts();
-        const validPosts = Array.isArray(data)
-          ? data.filter(
-              (item): item is BlogPost =>
-                'id' in item &&
-                'title' in item &&
-                'slug' in item &&
-                'excerpt' in item &&
-                'content' in item &&
-                'tags' in item &&
-                'published' in item
-            )
-          : [];
+        const data = await getAdminBlogPosts();
+        const validPosts = (Array.isArray(data) ? data.filter(isBlogPostRow) : []) as BlogPost[];
         setPosts(validPosts);
       } catch (err) {
         console.error('Error fetching blog posts:', err);
@@ -121,8 +123,11 @@ export default function BlogTab() {
       if (result.success) {
         setSuccess(editingPost ? 'Post updated successfully!' : 'Post added successfully!');
         // Refresh the posts list
-        const updatedPosts = await getBlogPosts();
-        setPosts(Array.isArray(updatedPosts) ? updatedPosts : []);
+        const updatedPosts = await getAdminBlogPosts();
+        const validPosts = (
+          Array.isArray(updatedPosts) ? updatedPosts.filter(isBlogPostRow) : []
+        ) as BlogPost[];
+        setPosts(validPosts);
 
         // Clear form if adding new post
         if (!editingPost) {

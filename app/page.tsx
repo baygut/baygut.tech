@@ -57,8 +57,7 @@ export default async function Home() {
 
   const categoriesPromise = getCategories().catch(() => []);
 
-  // Extract public tools for VibeStore
-  const publicTools = await getPublicTools().catch(() => []);
+  const publicToolsPromise = getPublicTools().catch(() => []);
 
   const contactInfoPromise = getContactInfo().catch(() => ({
     contactItems: [],
@@ -85,6 +84,7 @@ export default async function Home() {
     categoriesFromDb,
     contactInfoFromDb,
     blogPostsFromDb,
+    publicTools,
   ] = await Promise.all([
     skillsPromise,
     aboutContentPromise,
@@ -93,6 +93,7 @@ export default async function Home() {
     categoriesPromise,
     contactInfoPromise,
     blogPostsPromise,
+    publicToolsPromise,
   ]);
 
   // Use data from database or fallback to hardcoded data

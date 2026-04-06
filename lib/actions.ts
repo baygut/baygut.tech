@@ -2,8 +2,10 @@
 
 import { Category, Project } from '@/types/project';
 import { getNeonClient } from './db';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { put, del } from '@vercel/blob';
+import { CACHE_TAG_PORTFOLIO, PORTFOLIO_CACHE_REVALIDATE_SECONDS } from './cache-tags';
+import { bumpPortfolioCache } from './bump-portfolio-cache';
 
 // Hero content actions
 /**
@@ -11,7 +13,7 @@ import { put, del } from '@vercel/blob';
  * Creates the hero_content table if it doesn't exist.
  * @returns Object with name and title, or default values if no data exists
  */
-export async function getHeroContent() {
+async function loadHeroContent() {
   try {
     const sql = getNeonClient();
 
@@ -44,6 +46,11 @@ export async function getHeroContent() {
   }
 }
 
+export const getHeroContent = unstable_cache(loadHeroContent, ['hero-content'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
+
 /**
  * Updates hero section content in the database.
  * Performs an upsert operation (update if exists, insert if not).
@@ -75,6 +82,7 @@ export async function updateHeroContent(data: { name: string; title: string }) {
 
     // Revalidate the homepage to show the updated content
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -84,7 +92,7 @@ export async function updateHeroContent(data: { name: string; title: string }) {
 }
 
 // Skills actions
-export async function getSkills() {
+async function loadSkills() {
   try {
     const sql = getNeonClient();
 
@@ -112,8 +120,13 @@ export async function getSkills() {
   }
 }
 
+export const getSkills = unstable_cache(loadSkills, ['skills'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
+
 // About content actions
-export async function getAboutContent() {
+async function loadAboutContent() {
   try {
     const sql = getNeonClient();
 
@@ -136,8 +149,13 @@ export async function getAboutContent() {
   }
 }
 
+export const getAboutContent = unstable_cache(loadAboutContent, ['about-content'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
+
 // Projects actions
-export async function getProjects() {
+async function loadProjects() {
   try {
     const sql = getNeonClient();
 
@@ -242,60 +260,79 @@ export async function getProjects() {
     `;
 
     const projects =
-      await sql`SELECT p.id, p.title, p.description, p.color, c.id as category_id, c.name as category_name, p.github_url, p.demo_url 
+      await sql`SELECT p.id, p.title, p.description, p.color, c.id as category_id, c.name as category_name, p.github_url, p.demo_url,
+                       p.cover_image_url, (p.cover_image IS NOT NULL) as has_cover
                FROM projects p
                JOIN categories c ON p.category_id = c.id
                ORDER BY c.display_order, p.title`;
 
-    // For each project, get its tags and images
-    const projectsWithDetails = await Promise.all(
-      projects.map(async (project) => {
-        const tags = await sql`
-          SELECT tag FROM project_tags WHERE project_id = ${project.id}
-        `;
+    const projectIds = projects.map((p) => p.id);
+    const tagsByProject = new Map<number, string[]>();
+    const imagesByProject = new Map<number, string[]>();
 
-        const images = await sql`
-          SELECT id, image_url FROM project_images 
-          WHERE project_id = ${project.id}
-          ORDER BY position
-        `;
+    if (projectIds.length > 0) {
+      const [tagRows, imageRows] = await Promise.all([
+        sql`
+          SELECT project_id, tag FROM project_tags
+          WHERE project_id = ANY(${projectIds})
+        `,
+        sql`
+          SELECT id, project_id, image_url FROM project_images
+          WHERE project_id = ANY(${projectIds})
+          ORDER BY project_id, position
+        `,
+      ]);
 
-        // Use Vercel Blob URL directly if available; fall back to API route for legacy binary
-        const imageUrls = images.map((img) => img.image_url ?? `/api/images/${img.id}`);
+      for (const row of tagRows) {
+        const pid = row.project_id as number;
+        const list = tagsByProject.get(pid) ?? [];
+        list.push(row.tag as string);
+        tagsByProject.set(pid, list);
+      }
 
-        // Check for cover image: prefer blob URL, fall back to legacy binary route
-        const coverRow = await sql`
-          SELECT cover_image_url, (cover_image IS NOT NULL) as has_cover
-          FROM projects WHERE id = ${project.id}
-        `;
-        const coverImageUrl =
-          coverRow[0]?.cover_image_url ??
-          (coverRow[0]?.has_cover ? `/api/cover-image/${project.id}` : undefined);
+      for (const row of imageRows) {
+        const pid = row.project_id as number;
+        const list = imagesByProject.get(pid) ?? [];
+        const url = (row.image_url as string | null) ?? `/api/images/${row.id}`;
+        list.push(url);
+        imagesByProject.set(pid, list);
+      }
+    }
 
-        return {
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          color: project.color,
-          category: {
-            id: project.category_id,
-            name: project.category_name,
-          },
-          githubUrl: project.github_url,
-          demoUrl: project.demo_url,
-          tags: tags.map((tagItem) => tagItem.tag),
-          images: imageUrls,
-          coverImage: coverImageUrl,
-          createdAt: new Date().toISOString(),
-        };
-      })
-    );
+    const projectsWithDetails = projects.map((project) => {
+      const coverImageUrl =
+        project.cover_image_url ??
+        (project.has_cover ? `/api/cover-image/${project.id}` : undefined);
+
+      return {
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        color: project.color,
+        category: {
+          id: project.category_id,
+          name: project.category_name,
+        },
+        githubUrl: project.github_url,
+        demoUrl: project.demo_url,
+        tags: tagsByProject.get(project.id) ?? [],
+        images: imagesByProject.get(project.id) ?? [],
+        coverImage: coverImageUrl,
+        createdAt: new Date().toISOString(),
+      };
+    });
+
     return projectsWithDetails as Project[];
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw new Error('Failed to fetch projects');
   }
 }
+
+export const getProjects = unstable_cache(loadProjects, ['projects'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
 
 // Add project action
 export async function addProject(formData: {
@@ -368,6 +405,7 @@ export async function addProject(formData: {
     // Revalidate the projects page to show the new project
     revalidatePath('/projects');
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -377,7 +415,7 @@ export async function addProject(formData: {
 }
 
 // Contact info actions
-export async function getContactInfo() {
+async function loadContactInfo() {
   try {
     const sql = getNeonClient();
 
@@ -423,6 +461,11 @@ export async function getContactInfo() {
     throw new Error('Failed to fetch contact info');
   }
 }
+
+export const getContactInfo = unstable_cache(loadContactInfo, ['contact-info'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
 
 // Seed database with initial data
 export async function seedDatabase(reset = false) {
@@ -661,6 +704,7 @@ export async function seedDatabase(reset = false) {
 
     // Revalidate all paths to reflect the new data
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -721,7 +765,7 @@ export async function getCoverImage(projectId: string) {
 }
 
 // Get all categories with ordering
-export async function getCategories() {
+async function loadCategories() {
   try {
     const sql = getNeonClient();
 
@@ -758,6 +802,11 @@ export async function getCategories() {
   }
 }
 
+export const getCategories = unstable_cache(loadCategories, ['categories'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
+
 // Add a new category
 export async function addCategory(categoryData: {
   name: string;
@@ -786,6 +835,7 @@ export async function addCategory(categoryData: {
     // Revalidate paths that display categories
     revalidatePath('/projects');
     revalidatePath('/admin');
+    bumpPortfolioCache();
 
     return { success: true, id: result[0].id };
   } catch (error) {
@@ -827,6 +877,7 @@ export async function updateCategory(
     // Revalidate paths that display categories
     revalidatePath('/projects');
     revalidatePath('/admin');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -858,6 +909,7 @@ export async function deleteCategory(id: number): Promise<{ success: boolean; er
     // Revalidate paths that display categories
     revalidatePath('/projects');
     revalidatePath('/admin');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -887,6 +939,7 @@ export async function addSkill(skill: {
 
     // Revalidate paths that display skills
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -905,6 +958,7 @@ export async function deleteSkill(id: number): Promise<{ success: boolean; error
 
     // Revalidate paths that display skills
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -934,6 +988,7 @@ export async function updateSkill(
 
     // Revalidate paths that display skills
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -962,6 +1017,7 @@ export async function updateAboutContent(
 
     // Revalidate paths that display about content
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1010,6 +1066,7 @@ export async function updateContactInfo({
 
     // Revalidate paths that display contact info
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1073,6 +1130,7 @@ export async function deleteProject(id: number): Promise<{ success: boolean; err
     // Revalidate paths that display projects
     revalidatePath('/projects');
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1249,6 +1307,7 @@ export async function updateProject(
     // Revalidate paths that display projects
     revalidatePath('/projects');
     revalidatePath('/');
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1391,7 +1450,7 @@ function extractExperienceFromText(rawText: string): ExperienceEntry[] {
  * Results are cached in `resume_experience_cache` keyed by resume URL.
  * Re-parsing only happens when the resume URL changes.
  */
-export async function getExperienceFromResume(): Promise<ExperienceEntry[]> {
+async function loadExperienceFromResume(): Promise<ExperienceEntry[]> {
   try {
     const sql = getNeonClient();
 
@@ -1518,6 +1577,15 @@ export async function getExperienceFromResume(): Promise<ExperienceEntry[]> {
   }
 }
 
+export const getExperienceFromResume = unstable_cache(
+  loadExperienceFromResume,
+  ['experience-from-resume'],
+  {
+    revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+    tags: [CACHE_TAG_PORTFOLIO],
+  }
+);
+
 /**
  * Clears the experience cache so the resume is fully re-parsed on the next visit.
  * Useful from the admin dashboard after replacing a resume at the same URL.
@@ -1527,6 +1595,7 @@ export async function clearExperienceCache(): Promise<{ success: boolean; error?
     const sql = getNeonClient();
     await sql`DELETE FROM resume_experience_cache`;
     revalidatePath('/');
+    bumpPortfolioCache();
     return { success: true };
   } catch (error) {
     console.error('Error clearing experience cache:', error);
@@ -1535,7 +1604,7 @@ export async function clearExperienceCache(): Promise<{ success: boolean; error?
 }
 
 // Blog posts actions
-export async function getBlogPosts() {
+async function loadBlogPosts() {
   try {
     const sql = getNeonClient();
 
@@ -1563,26 +1632,35 @@ export async function getBlogPosts() {
       )
     `;
 
-    // Get all published blog posts
+    // Listing only — omit `content` so unstable_cache stays under Next.js 2MB limit
     const posts = await sql`
-      SELECT * FROM blog_posts 
+      SELECT id, title, slug, excerpt, published_at, updated_at, published
+      FROM blog_posts 
       WHERE published = true 
       ORDER BY published_at DESC
     `;
 
-    // For each post, get its tags
-    const postsWithTags = await Promise.all(
-      posts.map(async (post) => {
-        const tags = await sql`
-          SELECT tag FROM blog_tags WHERE post_id = ${post.id}
-        `;
+    const postIds = posts.map((p) => p.id as number);
+    const tagsByPost = new Map<number, string[]>();
 
-        return {
-          ...post,
-          tags: tags.map((tagItem) => tagItem.tag),
-        };
-      })
-    );
+    if (postIds.length > 0) {
+      const tagRows = await sql`
+        SELECT post_id, tag FROM blog_tags
+        WHERE post_id = ANY(${postIds})
+      `;
+      for (const row of tagRows) {
+        const pid = row.post_id as number;
+        const list = tagsByPost.get(pid) ?? [];
+        list.push(row.tag as string);
+        tagsByPost.set(pid, list);
+      }
+    }
+
+    const postsWithTags = posts.map((post) => ({
+      ...post,
+      content: '',
+      tags: tagsByPost.get(post.id as number) ?? [],
+    }));
 
     return postsWithTags as {
       id: number;
@@ -1601,42 +1679,56 @@ export async function getBlogPosts() {
   }
 }
 
+export const getBlogPosts = unstable_cache(loadBlogPosts, ['blog-posts'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
+
 // Get a single blog post by slug
 export async function getBlogPostBySlug(slug: string) {
-  try {
-    const sql = getNeonClient();
+  return unstable_cache(
+    async () => {
+      try {
+        const sql = getNeonClient();
 
-    const post = await sql`
-      SELECT * FROM blog_posts 
-      WHERE slug = ${slug} AND published = true
-    `;
+        const post = await sql`
+          SELECT * FROM blog_posts 
+          WHERE slug = ${slug} AND published = true
+        `;
 
-    if (post.length === 0) {
-      return null;
+        if (post.length === 0) {
+          return null;
+        }
+
+        const tags = await sql`
+          SELECT tag FROM blog_tags WHERE post_id = ${post[0].id}
+        `;
+
+        return {
+          ...post[0],
+          tags: tags.map((tagItem) => tagItem.tag),
+        } as {
+          id: number;
+          title: string;
+          slug: string;
+          excerpt: string;
+          content: string;
+          published_at: string;
+          updated_at: string;
+          published: boolean;
+          tags?: string[];
+        };
+      } catch (error) {
+        console.error('Error fetching blog post:', error);
+        return null;
+      }
+    },
+    ['blog-post-by-slug', slug],
+    {
+      revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+      tags: [CACHE_TAG_PORTFOLIO],
     }
-
-    const tags = await sql`
-      SELECT tag FROM blog_tags WHERE post_id = ${post[0].id}
-    `;
-
-    return {
-      ...post[0],
-      tags: tags.map((tagItem) => tagItem.tag),
-    } as {
-      id: number;
-      title: string;
-      slug: string;
-      excerpt: string;
-      content: string;
-      published_at: string;
-      updated_at: string;
-      published: boolean;
-      tags?: string[];
-    };
-  } catch (error) {
-    console.error('Error fetching blog post:', error);
-    return null;
-  }
+  )();
 }
 
 // Add a new blog post
@@ -1682,6 +1774,7 @@ export async function addBlogPost(formData: {
     revalidatePath('/');
     revalidatePath('/blog');
     revalidatePath(`/blog/${slug}`);
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1750,6 +1843,7 @@ export async function updateBlogPost(
     if (currentSlug !== slug) {
       revalidatePath(`/blog/${slug}`);
     }
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {
@@ -1782,6 +1876,7 @@ export async function deleteBlogPost(id: number) {
     if (slug) {
       revalidatePath(`/blog/${slug}`);
     }
+    bumpPortfolioCache();
 
     return { success: true };
   } catch (error) {

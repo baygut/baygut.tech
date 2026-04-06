@@ -3,10 +3,12 @@
 import { db } from '@/lib/db';
 import { tools } from '@/lib/schema';
 import { eq, desc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { isAuthenticated } from '@/lib/auth';
+import { bumpPortfolioCache } from '@/lib/bump-portfolio-cache';
+import { CACHE_TAG_PORTFOLIO, PORTFOLIO_CACHE_REVALIDATE_SECONDS } from '@/lib/cache-tags';
 
 export { isAuthenticated as checkAuth };
 
@@ -79,6 +81,7 @@ export async function saveToolBase(
   revalidatePath('/');
   revalidatePath('/tools');
   revalidatePath(`/tools/${validSlug}`);
+  bumpPortfolioCache();
   return validSlug;
 }
 
@@ -92,6 +95,7 @@ export async function deleteToolAction(slug: string) {
   await db.delete(tools).where(eq(tools.slug, slug));
   revalidatePath('/');
   revalidatePath('/tools');
+  bumpPortfolioCache();
 }
 
 export async function unlockTool(slug: string, passwordAttempt: string) {
@@ -143,14 +147,28 @@ export async function getTools() {
   return rows.map(serializeTool);
 }
 
-export async function getPublicTools() {
-  const rows = await db
-    .select()
+async function loadPublicTools() {
+  // Omit `html` and bytea icons — they blow past Next.js unstable_cache 2MB limit; icons use /api/tools/.../icon.svg
+  return db
+    .select({
+      id: tools.id,
+      slug: tools.slug,
+      title: tools.title,
+      description: tools.description,
+      iconColor: tools.iconColor,
+      visibility: tools.visibility,
+      createdAt: tools.createdAt,
+      updatedAt: tools.updatedAt,
+    })
     .from(tools)
     .where(eq(tools.visibility, 'public'))
     .orderBy(desc(tools.createdAt));
-  return rows.map(serializeTool);
 }
+
+export const getPublicTools = unstable_cache(loadPublicTools, ['public-tools'], {
+  revalidate: PORTFOLIO_CACHE_REVALIDATE_SECONDS,
+  tags: [CACHE_TAG_PORTFOLIO],
+});
 
 // Raw (un-serialized) fetch — for internal server-side use only (e.g. icon API route).
 // Do NOT pass the result to Client Components.

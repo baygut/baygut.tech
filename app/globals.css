@@ -120,3 +120,78 @@ h6 {
 .flex>a:nth-child(4) {
   animation-delay: 2.1s;
 }
+
+/* Admin portfolio export → print / Save as PDF (slide-style deck) */
+@media print {
+  /* Only this flow: drop body chrome so slides can bleed to the sheet edges */
+  body:has(.portfolio-export-root) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .admin-export-toolbar {
+    display: none !important;
+  }
+
+  /*
+   * Browsers hide background colors/gradients in print by default. Export slides use
+   * light text on dark sections — without this, backgrounds drop out and text disappears.
+   */
+  .portfolio-export-root,
+  .portfolio-export-root * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .portfolio-export-root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .portfolio-export-main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  /*
+   * One slide = one sheet: fill full page (297×210mm landscape). Inner padding keeps text
+   * off the physical edge when printers require a safe zone.
+   */
+  .portfolio-export-slide {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 210mm !important;
+    margin: 0 !important;
+    padding: 12mm 14mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .portfolio-export-slide:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  /* Use the full slide width; screen max-width caps would otherwise “postage stamp” the PDF */
+  .portfolio-export-slide .max-w-3xl,
+  .portfolio-export-slide .max-w-4xl,
+  .portfolio-export-slide .max-w-5xl,
+  .portfolio-export-slide .max-w-6xl,
+  .portfolio-export-slide .max-w-7xl {
+    max-width: 100% !important;
+  }
+}
